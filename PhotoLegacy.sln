@@ -13,6 +13,12 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PhotoExplorer", "PhotoExplo
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PhotoPrinter", "PhotoPrinter\PhotoPrinter.vcxproj", "{D266EC20-850E-4B51-AEBD-F5756EF5456B}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{75311F22-9AA3-4A8A-A5EE-79CE06340907}"
+	ProjectSection(SolutionItems) = preProject
+		Images\page_030.jpg = Images\page_030.jpg
+		Images\PhotoExplorer.jpg = Images\PhotoExplorer.jpg
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
