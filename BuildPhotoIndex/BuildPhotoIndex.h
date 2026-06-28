@@ -1,0 +1,18 @@
+/////////////////////////////////////////////////////////////////////////////
+// Copyright © by W. T. Block, all rights reserved
+/////////////////////////////////////////////////////////////////////////////
+#pragma once
+
+#include "resource.h"
+#include "PhotoIndexTypes.h"
+#include "CHelper.h"
+#include "PhotoIndexBuilder.h"
+#include <gdiplus.h>
+
+// we need to link to the GDI+ library
+#pragma comment(lib, "gdiplus.lib")
+
+/////////////////////////////////////////////////////////////////////////////
+// used for gdiplus library
+ULONG_PTR m_gdiplusToken;
+

@@ -1,0 +1,122 @@
+//{{NO_DEPENDENCIES}}
+// Microsoft Visual C++ generated include file.
+// Used by PhotoExplorer.rc
+//
+#define IDD_ABOUTBOX                    100
+#define IDP_OLE_INIT_FAILED             100
+#define IDR_POPUP_EDIT                  119
+#define ID_STATUSBAR_PANE1              120
+#define ID_STATUSBAR_PANE2              121
+#define IDS_STATUS_PANE1                122
+#define IDS_STATUS_PANE2                123
+#define IDS_TOOLBAR_STANDARD            124
+#define IDS_TOOLBAR_CUSTOMIZE           125
+#define ID_VIEW_CUSTOMIZE               126
+#define ID_VIEW_ARRANGE                 127
+#define IDR_MAINFRAME                   128
+#define IDR_MAINFRAME_256               129
+#define IDR_PhotoExplorerTYPE           130
+#define ID_WINDOW_MANAGER               131
+#define ID_VIEW_OUTPUTWND               149
+#define ID_VIEW_PROPERTIESWND           150
+#define ID_SORTPROPERTIES               151
+#define ID_PROPERTIES_LABEL             152
+#define ID_PROPERTIES_CANCEL            153
+#define ID_EXPAND_ALL                   154
+#define IDS_OUTPUT_WND                  157
+#define IDS_PROPERTIES_WND              158
+#define IDI_OUTPUT_WND                  165
+#define IDI_OUTPUT_WND_HC               166
+#define IDI_PROPERTIES_WND              167
+#define IDI_PROPERTIES_WND_HC           168
+#define IDR_OUTPUT_POPUP                182
+#define IDR_PROPERTIES                  183
+#define IDB_PROPERTIES_HC               184
+#define ID_VIEW_NAVIGATION              185
+#define IDB_NAVIGATION_LARGE            186
+#define IDB_NAVIGATION_LARGE_HC         187
+#define IDB_PAGES                       188
+#define IDB_PAGES_HC                    189
+#define IDB_PAGES_SMALL                 190
+#define IDB_PAGES_SMALL_HC              191
+#define IDR_THEME_MENU                  200
+#define ID_SET_STYLE                    201
+#define ID_VIEW_APPLOOK_WIN_2000        205
+#define ID_VIEW_APPLOOK_OFF_XP          206
+#define ID_VIEW_APPLOOK_WIN_XP          207
+#define ID_VIEW_APPLOOK_OFF_2003        208
+#define ID_VIEW_APPLOOK_VS_2005         209
+#define ID_VIEW_APPLOOK_VS_2008         210
+#define ID_VIEW_APPLOOK_OFF_2007_BLUE   215
+#define ID_VIEW_APPLOOK_OFF_2007_BLACK  216
+#define ID_VIEW_APPLOOK_OFF_2007_SILVER 217
+#define ID_VIEW_APPLOOK_OFF_2007_AQUA   218
+#define ID_VIEW_APPLOOK_WINDOWS_7       219
+#define IDS_MYCALENDARS                 250
+#define IDS_CALENDAR                    251
+#define IDS_SHORTCUTS                   252
+#define IDS_FOLDERS                     253
+#define IDS_OUTLOOKBAR                  258
+#define IDS_PROGRESS_TAB                300
+#define IDS_WARNINGS_TAB                301
+#define IDS_ERRORS_TAB                  302
+#define IDS_EDIT_MENU                   306
+#define IDD_DIALOG_COMMENT_TEXT         307
+#define IDD_THUMBNAIL_DIALOG            311
+#define IDD_SHORTCUTS_DIALOG            313
+#define IDD_EDIT_SHORTCUT_DIALOG        315
+#define IDD_SPLASH                      316
+#define IDD_ABOUTVERSIONS               317
+#define IDB_BITMAP1                     318
+#define IDB_BITMAP2                     321
+#define IDB_LOGO                        321
+#define IDD_MAP_DIALOG                  322
+#define IDC_EDIT_COMMENT_TEXT           1000
+#define IDC_RICHEDIT22                  1002
+#define IDC_PROGRESS1                   1003
+#define IDC_LIST_CONTROL                1004
+#define IDC_EDIT_SHORTCUTS              1006
+#define IDC_EDIT2                       1007
+#define IDC_BROWSER_FRAME               1008
+#define ID_BUTTON_PREVIEW               32771
+#define ID_BUTTON_EXPORT                32772
+#define ID_ALBUM_TITLE                  32773
+#define ID_ALBUM_LOCATION               32775
+#define ID_ALBUM_COMMENT                32776
+#define ID_ALBUM_TIME                   32777
+#define ID_ALBUM_DATE                   32778
+#define ID_EDIT_DELETE                  32779
+#define ID_ALBUM_ARTIST                 32781
+#define ID_ALBUM_COPYRIGHT              32782
+#define ID_ALBUM_SOFTWARE               32783
+#define ID_ALBUM_KEYWORDS               32784
+#define ID_Menu                         32786
+#define ID_EDIT_EXPORTLABELS            32788
+#define ID_EDIT_READDETAILS             32797
+#define ID_EDIT_SHORTCUTS               32804
+#define ID_INDICATOR_PATH               32805
+#define ID_EDIT_ALBUM_LABEL             32806
+#define ID_EDIT_FOLDERRENAME            32807
+#define ID_EDIT_ALBUM                   32808
+#define IDC_VER_PRODUCT_NAME            32809
+#define IDC_VER_FILE_VERSION            32810
+#define IDC_SUBTITLE                    32811
+#define IDC_VER_COPYRIGHT               32812
+#define IDC_VER_RIGHTS                  32813
+#define IDC_VER_WEB                     32814
+#define ID_EDIT_RENAME                  32816
+#define ID_BING_MAP                     32817
+#define ID_GOOGLE_MAP                   32818
+#define ID_EDIT_DOWNLOADLABELS          32821
+#define ID_EDIT_DOWNLOADLABELS32822     32822
+
+// Next default values for new objects
+// 
+#ifdef APSTUDIO_INVOKED
+#ifndef APSTUDIO_READONLY_SYMBOLS
+#define _APS_NEXT_RESOURCE_VALUE        324
+#define _APS_NEXT_COMMAND_VALUE         32823
+#define _APS_NEXT_CONTROL_VALUE         1009
+#define _APS_NEXT_SYMED_VALUE           310
+#endif
+#endif

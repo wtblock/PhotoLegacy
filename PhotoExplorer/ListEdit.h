@@ -1,0 +1,25 @@
+/////////////////////////////////////////////////////////////////////////////
+// Copyright © by W. T. Block, all rights reserved
+/////////////////////////////////////////////////////////////////////////////
+#pragma once
+
+/////////////////////////////////////////////////////////////////////////////
+class CListEdit : public CEdit
+{
+public:
+	CListEdit( int iItem, int iSubItem, CString sInitText );
+	virtual ~CListEdit();
+
+protected:
+	int m_iItem;
+	int m_iSubItem;
+	CString m_sInitText;
+
+	afx_msg void OnKillFocus( CWnd* pNewWnd );
+	afx_msg void OnNcDestroy();
+	afx_msg void OnChar( UINT nChar, UINT nRepCnt, UINT nFlags );
+
+	DECLARE_MESSAGE_MAP()
+};
+
+/////////////////////////////////////////////////////////////////////////////
