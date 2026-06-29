@@ -4,7 +4,6 @@
 #include "pch.h"
 #include "resource.h"
 #include "framework.h"
-#include "PhotoQueryEngine.h"
 #include "PhotoIndexRebuildSession.h"
 #include "PhotoPrinter.h"
 #include "PhotoPrinterDoc.h"

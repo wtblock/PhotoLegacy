@@ -45,9 +45,6 @@
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="PhotoQueryEngine.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="PlusGDI.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -55,9 +52,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ThreadHelp.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="PhotoSearchEngine.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ImagePlus.h">
@@ -80,9 +74,6 @@
     <ClCompile Include="PhotoIndexRebuildSession.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="PhotoQueryEngine.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="PlusGDI.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -90,9 +81,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ThreadHelp.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="PhotoSearchEngine.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ImagePlus.cpp">
