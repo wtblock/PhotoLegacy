@@ -83,7 +83,15 @@ LRESULT CPropertiesWnd::OnPropertyChange
 	LRESULT value = 0;
 
 	CPhotoPrinterDoc* pDoc = PhotoPrinterDocument;
+	if (pDoc == nullptr)
+	{
+		return value;
+	}
 	CPhotoPrinterView* pView = PhotoPrinterView;
+	if (pView == nullptr)
+	{
+		return value;
+	}
 
 	// the message passed in the property panel property that changed
 	// which is displaying a copy of the information in the selected
