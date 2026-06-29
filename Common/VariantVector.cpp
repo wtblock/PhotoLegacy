@@ -1,5 +1,5 @@
-/////////////////////////////////////////////////////////////////////////////
-// Copyright � by W. T. Block, all rights reserved
+﻿/////////////////////////////////////////////////////////////////////////////
+// Copyright © by W. T. Block, all rights reserved
 /////////////////////////////////////////////////////////////////////////////
 #include "pch.h"
 #include "VariantVector.h"
@@ -7,7 +7,15 @@
 #include <float.h>
 
 /////////////////////////////////////////////////////////////////////////////
-// default constructor
+// Default constructor
+//
+// Initializes the vector to an empty state with:
+//   • Null = −9999
+//   • Type = VT_EMPTY
+//   • 1 column, 1 element per column
+//   • Conversion parameters reset
+//   • Statistics reset
+/////////////////////////////////////////////////////////////////////////////
 CVariantVector::CVariantVector(void)
 {
 	Null = -9999;
@@ -49,7 +57,11 @@ CVariantVector::~CVariantVector(void)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-// create a variant vector
+// Create
+//
+// Resets the vector and initializes type, dimensions, units, and null value.
+// If ulRows > 0, preallocates the buffer and fills with nulls.
+/////////////////////////////////////////////////////////////////////////////
 void CVariantVector::Create
 (	double dNull, // the empty value
 	VARENUM eType, // variant type
@@ -80,7 +92,11 @@ void CVariantVector::Create
 } // Create
 
 /////////////////////////////////////////////////////////////////////////////
-// number of elements of data
+// count
+//
+// Returns the number of stored elements based on the active VARIANT type.
+// Each type uses its own internal std::vector<T>.
+/////////////////////////////////////////////////////////////////////////////
 ULONG CVariantVector::count()
 {
 	const VARENUM nType = getType();
@@ -273,7 +289,13 @@ short CVariantVector::getElementSizeInBytes( VARENUM nType )
 } // getElementSizeInBytes
 
 /////////////////////////////////////////////////////////////////////////////
-// convert values
+// Convert
+//
+// Applies a linear transformation to all non‑null values:
+//     newValue = oldValue * dMult + dAdd
+//
+// Skips null values and replaces non‑finite results with Null.
+/////////////////////////////////////////////////////////////////////////////
 bool CVariantVector::Convert( DOUBLE dMult, DOUBLE dAdd )
 {	// if the multiplier is 1 and the add is zero, do nothing
 	if ( CHelper::NearlyEqual( dMult, 1.0, 0.0000001 ) )
@@ -344,8 +366,11 @@ bool CVariantVector::FindMinMax( DOUBLE& dMinimum, DOUBLE& dMaximum )
 } // FindMinMax
 
 /////////////////////////////////////////////////////////////////////////////
-// calculate statistics--rather than making a pass through the data
-// separately for each statistic, calculate them all in one pass
+// CalculateStatistics
+//
+// Computes FirstLive, LastLive, Minimum, Maximum, Average in a single pass.
+// Skips null values, non‑finite values, and sentinel −9999 values.
+/////////////////////////////////////////////////////////////////////////////
 bool CVariantVector::CalculateStatistics()
 {
 	bool value = false;
@@ -446,12 +471,12 @@ bool CVariantVector::CalculateStatistics()
 } // CalculateStatistics
 
 /////////////////////////////////////////////////////////////////////////////
-// change the data type of an existing buffer by copying from one 
-// buffer to another as a byte array...it is up to the application
-// to insure this makes sense.  For example, if the vector is sized
-// for 10 doubles (80 bytes), data is copied into the vector as
-// bytes, and changeType is used to put the data back to doubles, then
-// the byte array should be 80 bytes long.
+// changeType
+//
+// Reinterprets the underlying buffer as a different VARIANT type.
+// Byte‑preserving: the total byte count must match exactly.
+// Caller must ensure the reinterpretation is meaningful.
+/////////////////////////////////////////////////////////////////////////////
 bool CVariantVector::changeType( VARENUM eNew )
 {
 	bool value = true;
@@ -847,7 +872,10 @@ bool CVariantVector::setColumn
 } // setColumn
 	
 /////////////////////////////////////////////////////////////////////////////
-// copy data into safe array
+// getData(COleSafeArray&)
+//
+// Exports the internal buffer to a COM SafeArray of the active VARIANT type.
+/////////////////////////////////////////////////////////////////////////////
 void CVariantVector::getData( COleSafeArray& sa )
 {
 	const VARENUM vt = getType();
@@ -861,7 +889,10 @@ void CVariantVector::getData( COleSafeArray& sa )
 } // getData
 
 /////////////////////////////////////////////////////////////////////////////
-// assigns the data from a safe array
+// setData(VARIANT&)
+//
+// Imports a SafeArray into the internal buffer, converting type as needed.
+/////////////////////////////////////////////////////////////////////////////
 bool CVariantVector::setData( VARIANT& data )
 {
 	bool bOK = false;

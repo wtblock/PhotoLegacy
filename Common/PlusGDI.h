@@ -1,5 +1,5 @@
-/////////////////////////////////////////////////////////////////////////////
-// Copyright � by W. T. Block, all rights reserved
+﻿/////////////////////////////////////////////////////////////////////////////
+// Copyright © by W. T. Block, all rights reserved
 /////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include <map>
@@ -8,6 +8,12 @@ using namespace Gdiplus;
 
 #define MAX_EXT_LEN 20 
 
+/////////////////////////////////////////////////////////////////////////////
+// ImageFormat_ID_Ext
+//
+// Static lookup table mapping IMAGE_FORMAT_ID → file extension.
+// Used for extension parsing and encoder lookup.
+/////////////////////////////////////////////////////////////////////////////
 typedef struct tagImageFormatIDExt
 {
 	UINT m_nFormatID;
@@ -15,7 +21,12 @@ typedef struct tagImageFormatIDExt
 
 } IMAGEFORMAT_ID_EXT;
 
-// Define the list of all standard image format ids
+/////////////////////////////////////////////////////////////////////////////
+// IMAGE_FORMAT_ID
+//
+// Enumeration of all standard GDI+ image format identifiers.
+// These correspond to common file extensions and encoder types.
+/////////////////////////////////////////////////////////////////////////////
 typedef enum tagImageFormatId
 {
 	BMP_ID = 0,
@@ -37,6 +48,16 @@ typedef enum tagImageFormatId
 	WMF_ID
 } IMAGE_FORMAT_ID;
 
+/////////////////////////////////////////////////////////////////////////////
+// IMAGE_COMPARE_RESULT
+//
+// Result codes for CompareTwoImages():
+//   EQUAL                → images match exactly
+//   DIFFERENT_SIZE       → dimensions differ
+//   DIFFERENT_CONTENT    → pixel data differs
+//   MEMORY_ALLOCATION_ERROR
+//   UNKNOWN_ERROR
+/////////////////////////////////////////////////////////////////////////////
 enum IMAGE_COMPARE_RESULT
 {
 	EQUAL = 0,
@@ -46,7 +67,36 @@ enum IMAGE_COMPARE_RESULT
 	UNKNOWN_ERROR
 };
 
-// The list of image format ids paired with standard image extension
+/////////////////////////////////////////////////////////////////////////////
+// IMAGEFORMAT_ID_EXT
+//
+// Maps a numeric IMAGE_FORMAT_ID to a file extension or encoder MIME type.
+// Used for:
+//   • Determining encoder CLSID
+//   • Validating supported formats
+//   • Mapping between extension → format ID → encoder string
+/////////////////////////////////////////////////////////////////////////////
+static IMAGEFORMAT_ID_EXT ImageFormat_ID_EncoderExt[] =
+{
+	{ BMP_ID, L"image/bmp" },
+	{ DIB_ID, L"image/bmp" },
+	{ RLE_ID, L"image/bmp" },
+	{ GIF_ID, L"image/gif" },
+	{ JPEG_ID, L"image/jpeg" },
+	{ JPG_ID, L"image/jpeg" },
+	{ JPE_ID, L"image/jpeg" },
+	{ JFIF_ID, L"image/jpeg" },
+	{ PNG_ID, L"image/png" },
+	{ TIF_ID, L"image/tiff" },
+	{ TIFF_ID, L"image/tiff" }
+};
+
+/////////////////////////////////////////////////////////////////////////////
+// ImageFormat_ID_Ext
+//
+// Static lookup table mapping IMAGE_FORMAT_ID → file extension.
+// Used for extension parsing and encoder lookup.
+/////////////////////////////////////////////////////////////////////////////
 static IMAGEFORMAT_ID_EXT ImageFormat_ID_Ext[] =
 {
 	{ BMP_ID, L"bmp" },
@@ -68,6 +118,13 @@ static IMAGEFORMAT_ID_EXT ImageFormat_ID_Ext[] =
 	{ WMF_ID, L"wmf" }
 };
 
+/////////////////////////////////////////////////////////////////////////////
+// IMAGE_FORMAT_ID
+//
+// Enumeration of all standard GDI+ image format identifiers.
+// These correspond to common file extensions and encoder types.
+/////////////////////////////////////////////////////////////////////////////
+// 
 // The list of image formats that are able to be opened
 static IMAGE_FORMAT_ID ImageFormatOpenSupported_ID[] =
 {
@@ -102,22 +159,40 @@ static IMAGE_FORMAT_ID ImageFormatSaveSupported_ID[] =
 	{ TIFF_ID }
 };
 
-// The list of image format ids paired with encoder extension
-static IMAGEFORMAT_ID_EXT ImageFormat_ID_EncoderExt[] =
-{
-	{ BMP_ID, L"image/bmp" },
-	{ DIB_ID, L"image/bmp" },
-	{ RLE_ID, L"image/bmp" },
-	{ GIF_ID, L"image/gif" },
-	{ JPEG_ID, L"image/jpeg" },
-	{ JPG_ID, L"image/jpeg" },
-	{ JPE_ID, L"image/jpeg" },
-	{ JFIF_ID, L"image/jpeg" },
-	{ PNG_ID, L"image/png" },
-	{ TIF_ID, L"image/tiff" },
-	{ TIFF_ID, L"image/tiff" }
-};
-
+/////////////////////////////////////////////////////////////////////////////
+// CPlusGDI
+//
+// High‑level wrapper around GDI+ providing safe, convenient access to
+// image loading, saving, format identification, multi‑frame handling,
+// and device‑context drawing.
+//
+// Purpose:
+//   • Abstract away raw GDI+ Image/Bitmap usage
+//   • Provide unified open/save operations (file, stream, metafile)
+//   • Support multi‑frame formats (TIFF, GIF, multi‑page EMF)
+//   • Provide encoder lookup by extension or MIME type
+//   • Provide conversion helpers (monochrome, scaling, padding)
+//   • Provide device‑context drawing helpers (Draw, DIB brushes)
+//   • Provide image comparison utilities
+//
+// Key Features:
+//   • Open images from file or IStream
+//   • Save images in any GDI+ encoder format
+//   • Append frames to multi‑frame images (TIFF, GIF)
+//   • Retrieve frame count and dimension IDs
+//   • Convert images to monochrome
+//   • Create DIB pattern brushes
+//   • Extract HBITMAP, HICON, HENHMETAFILE
+//   • Compare two images pixel‑by‑pixel
+//
+// Format Support:
+//   • Uses IMAGE_FORMAT_ID and IMAGEFORMAT_ID_EXT tables to map
+//     extensions → format IDs → encoder MIME types
+//   • Supports both openable formats and savable formats
+//
+// This class is used throughout your imaging tools (PhotoPrinter,
+// PhotoExplorer, PlotStudio) to provide a consistent, safe interface
+// to GDI+ image manipulation.
 /////////////////////////////////////////////////////////////////////////////
 class CPlusGDI
 {
@@ -138,7 +213,11 @@ public:
 
 // public properties
 public:
-	// is the image currently open
+	/////////////////////////////////////////////////////////////////////////////
+	// IsOpen
+	//
+	// Returns true if an image is currently loaded (m_pImage != nullptr).
+	/////////////////////////////////////////////////////////////////////////////
 	inline bool GetIsOpen()
 	{
 		const bool value = m_pImage != nullptr;
@@ -151,23 +230,39 @@ public:
 
 // public attributes
 public:
-	// access to the underlying image
+	/////////////////////////////////////////////////////////////////////////////
+	// GetImage / operator Image*
+	//
+	// Provides direct access to the underlying GDI+ Image pointer.
+	// Useful for advanced operations not wrapped by CPlusGDI.
+	/////////////////////////////////////////////////////////////////////////////
 	inline Gdiplus::Image* GetImage()
 	{
 		return m_pImage;
 	}
+
 	// cast to image pointer
 	inline operator Gdiplus::Image*( )
 	{
 		return GetImage();
 	}
-	// monochrome flag
+
+	/////////////////////////////////////////////////////////////////////////////
+	// IsMonochrome
+	//
+	// Returns true if the image is 1‑bit per pixel.
+	/////////////////////////////////////////////////////////////////////////////
 	inline bool IsMonochrome()
 	{
 		return GetBitsPerPixel() == 1;
 	}
 
-	// image filename
+	/////////////////////////////////////////////////////////////////////////////
+	// ImagePathname
+	//
+	// Gets or sets the filename associated with the image.
+	// Used for metadata, logging, and save operations.
+	/////////////////////////////////////////////////////////////////////////////
 	inline CString ImagePathname()
 	{
 		return m_pImage != 0 ? m_csPathname : _T( "" );
@@ -179,7 +274,11 @@ public:
 
 // public inline methods
 public:
-	// rotate / flip the image
+	/////////////////////////////////////////////////////////////////////////////
+	// RotateFlip
+	//
+	// Applies GDI+ rotation or flip operations to the image.
+	/////////////////////////////////////////////////////////////////////////////
 	inline Status RotateFlip( Gdiplus::RotateFlipType rotateFlipType )
 	{
 		return m_pImage->RotateFlip( rotateFlipType );
@@ -187,26 +286,46 @@ public:
 
 // public methods
 public:
-	// open the image from an IStream interface pointer.  the optional
-	// key string is a string used to identify the image and is stored in the 
-	// image's pathname.
+	/////////////////////////////////////////////////////////////////////////////
+	// Open(IStream*, key)
+	//
+	// Loads an image from an IStream. Optional key is stored as pathname.
+	// Supports memory streams, embedded resources, and custom loaders.
+	/////////////////////////////////////////////////////////////////////////////
 	bool Open( IStream* pStream, LPCTSTR key = 0 );
 
-	// Open the image which is stored in lpszPathName
+	/////////////////////////////////////////////////////////////////////////////
+	// Open(path)
+	//
+	// Loads an image from a file path using GDI+ Image::FromFile().
+	/////////////////////////////////////////////////////////////////////////////
 	bool Open( LPCTSTR lpszPathName );
 
-	// returns the number of frames in an image
-	int GetFrameCount() 
+	/////////////////////////////////////////////////////////////////////////////
+	// GetFrameCount
+	//
+	// Returns number of frames/pages in multi‑frame images (TIFF, GIF).
+	/////////////////////////////////////////////////////////////////////////////
+	int GetFrameCount()
 	{
 		return m_nFrameCount;
 	}
 
-	// width in physical pixels
+	/////////////////////////////////////////////////////////////////////////////
+	// GetWidth / GetHeight
+	//
+	// Returns physical pixel dimensions of the image.
+	/////////////////////////////////////////////////////////////////////////////
 	int GetWidth();
 	
 	// height in physical pixels
 	int GetHeight();
 
+	/////////////////////////////////////////////////////////////////////////////
+	// GetWidthInches / GetHeightInches
+	//
+	// Converts pixel dimensions to physical inches using DPI.
+	/////////////////////////////////////////////////////////////////////////////
 	double GetWidthInches();
 
 	double GetHeightInches();
@@ -226,20 +345,40 @@ public:
 		m_fDefaultWidth = fDepth;
 	}
 
+	/////////////////////////////////////////////////////////////////////////////
+	// GetBitsPerPixel
+	//
+	// Returns the image’s color depth (1, 8, 24, 32, etc.).
+	/////////////////////////////////////////////////////////////////////////////
 	long GetBitsPerPixel();
 
+	/////////////////////////////////////////////////////////////////////////////
+	// GetEnhMetafileHandle
+	//
+	// Extracts an enhanced metafile handle for vector formats (EMF).
+	/////////////////////////////////////////////////////////////////////////////
 	bool GetEnhMetafileHandle
 	( 
 		CDC& dcRef, HENHMETAFILE& hENH, int iFrameIndex = 0 
 	);
 
+	/////////////////////////////////////////////////////////////////////////////
+	// GetDIBHandleForBrush / GetHBITMAP / GetHICON
+	//
+	// Converts the image into various Win32 handles for GDI operations.
+	/////////////////////////////////////////////////////////////////////////////
 	bool GetDIBHandleForBrush( CDC* pDC, HBITMAP& hBitmap );
 
 	bool GetHBITMAP( HBITMAP& hBitmap );
 
 	bool GetHICON( HICON& hIcon );
 
-	// draw a portion of the image into the destination rectangle
+	/////////////////////////////////////////////////////////////////////////////
+	// Draw
+	//
+	// Draws the entire image or a sub‑rectangle into a destination DC.
+	// Supports scaling and cropping.
+	/////////////////////////////////////////////////////////////////////////////
 	void Draw( CDC* pDC, CRect& rectDest, CRect& rectSrc );
 
 	// draw a portion of the image into the destination rectangle
@@ -257,6 +396,12 @@ public:
 		Draw( pDC, rectDest, rectSrc );
 	}
 	
+	/////////////////////////////////////////////////////////////////////////////
+	// CreateDIBBitmapInfo / CreateDIBPatternBrush
+	//
+	// Creates DIB headers and pattern brushes for monochrome or color images.
+	// Used for printing, previewing, and brush creation.
+	/////////////////////////////////////////////////////////////////////////////
 	BITMAPINFO* CreateDIBBitmapInfo
 	( 
 		CDC* pDC, Size& szSizeInPixel, COLORREF& rgbFG, COLORREF& rgbBG 
@@ -285,8 +430,19 @@ public:
 
 	int GetImagePaddingWidth( int iWidth );
 
+	/////////////////////////////////////////////////////////////////////////////
+	// ConverToMonochrome
+	//
+	// Converts the image to 1‑bit monochrome using foreground/background colors.
+	/////////////////////////////////////////////////////////////////////////////
 	void ConverToMonochrome( COLORREF& rgbFG, COLORREF& rgbBG );
 
+	/////////////////////////////////////////////////////////////////////////////
+	// ScaleImage
+	//
+	// Scales a CBitmap to a new size using GDI+ interpolation.
+	// Used for preview thumbnails and DPI adjustments.
+	/////////////////////////////////////////////////////////////////////////////
 	static CBitmap* ScaleImage( CDC* pDC, CBitmap*& pBitmap, bool bPreview = false );
 
 public:
@@ -296,6 +452,11 @@ public:
 	// Free all resources
 	void CleanUp();
 
+	/////////////////////////////////////////////////////////////////////////////
+	// Save(HENHMETAFILE, Size, Point, path, append, close)
+	//
+	// Saves an enhanced metafile to disk, optionally appending frames.
+	/////////////////////////////////////////////////////////////////////////////
 	bool Save
 	( 
 		HENHMETAFILE& hmf, // handle to enhanced metafile
@@ -306,8 +467,18 @@ public:
 		bool bCloseFile = true // close file on last frame
 	);
 
+	/////////////////////////////////////////////////////////////////////////////
+	// Save(path)
+	//
+	// Saves the current image using its detected encoder.
+	/////////////////////////////////////////////////////////////////////////////
 	bool Save( LPCTSTR lpszPathName );
 
+	/////////////////////////////////////////////////////////////////////////////
+	// Save(IStream*, formatID, inputImage)
+	//
+	// Saves an image to an IStream using a specific encoder format.
+	/////////////////////////////////////////////////////////////////////////////
 	bool Save
 	( 
 		IStream* pIStream, 
@@ -315,6 +486,12 @@ public:
 		Image* pInputImage = NULL 
 	);
 
+	/////////////////////////////////////////////////////////////////////////////
+	// SaveAdd / SaveSingleFrameImage / SaveMultiFrameImage
+	//
+	// Handles multi‑frame save operations (TIFF, GIF).
+	// Supports append mode and frame‑by‑frame writing.
+	/////////////////////////////////////////////////////////////////////////////
 	bool SaveAdd
 	( 
 		Image* pImage, 
@@ -342,6 +519,11 @@ public:
 	);
 
 public:
+	/////////////////////////////////////////////////////////////////////////////
+	// IsImageFormatOpenSupported / IsImageFormatSaveSupported
+	//
+	// Returns true if the given extension is supported for open/save.
+	/////////////////////////////////////////////////////////////////////////////
 	static bool IsImageFormatOpenSupported
 	( 
 		CString strImageFormat, bool bShowWarning = false 
@@ -352,11 +534,28 @@ public:
 		CString strImageFormat, bool bShowWarning = false 
 	);
 
+	/////////////////////////////////////////////////////////////////////////////
+	// IsImageFormatSupportMultiFrame
+	//
+	// Returns true if the format supports multiple frames/pages.
+	/////////////////////////////////////////////////////////////////////////////
 	static bool IsImageFormatSupportMultiFrame( CString strImageFormat );
 
+	/////////////////////////////////////////////////////////////////////////////
+	// GetEncoderClsid(format, pClsid)
+	//
+	// Retrieves the CLSID for the encoder matching the MIME type.
+	// Required for GDI+ Image::Save().
+	/////////////////////////////////////////////////////////////////////////////
 	static int GetEncoderClsid( LPCWSTR format, CLSID* pClsid );
 	
-	// WTB: more useful equivalent of the above for an outside application
+	/////////////////////////////////////////////////////////////////////////////
+	// GetEncoderClsid(extension, pClsid)
+	//
+	// Convenience overload: determines encoder from file extension.
+	// Uses extension → format ID → encoder MIME type → CLSID.
+	/////////////////////////////////////////////////////////////////////////////
+		// WTB: more useful equivalent of the above for an outside application
 	// since outside applications are probably not using wide character strings
 	// and the extension is more likely to be known than the format string
 	inline bool GetEncoderClsid( CString csExtention, CLSID* pClsid )
@@ -378,6 +577,11 @@ public:
 		return bOK;
 	}
 
+	/////////////////////////////////////////////////////////////////////////////
+	// GetFormatIDByExt
+	//
+	// Maps a file extension (".jpg", "png") to an IMAGE_FORMAT_ID.
+	/////////////////////////////////////////////////////////////////////////////
 	static bool GetFormatIDByExt( LPCWSTR pExt, UINT& nImageFormatID );
 	
 	// WTB: same as above but uses the enumeration
@@ -389,6 +593,11 @@ public:
 		return bOK;
 	}
 
+	/////////////////////////////////////////////////////////////////////////////
+	// GetEncoderExtByID
+	//
+	// Maps IMAGE_FORMAT_ID → encoder MIME type (e.g., "image/jpeg").
+	/////////////////////////////////////////////////////////////////////////////
 	static bool GetEncoderExtByID( UINT nImageFormatID, LPWSTR pEncoderExt );
 	
 	// WTB: same as above but uses the enumeration
@@ -398,7 +607,20 @@ public:
 		return GetEncoderExtByID( uID, pEncoderExt );
 	}
 
-	// compare two images
+	/////////////////////////////////////////////////////////////////////////////
+	// CompareTwoImages
+	//
+	// Compares two images pixel‑by‑pixel.
+	//
+	// Returns:
+	//   EQUAL
+	//   DIFFERENT_SIZE
+	//   DIFFERENT_CONTENT
+	//   MEMORY_ALLOCATION_ERROR
+	//   UNKNOWN_ERROR
+	//
+	// Optionally writes a difference image to pImageDiff.
+	/////////////////////////////////////////////////////////////////////////////
 	static IMAGE_COMPARE_RESULT CompareTwoImages
 	(
 		Bitmap* pImage1,
@@ -412,10 +634,33 @@ private:
 
 // Attributes
 private:
+	/////////////////////////////////////////////////////////////////////////////
+	// m_fDefaultWidth
+	//
+	// Legacy field used for metafile scaling and default DPI assumptions.
+	/////////////////////////////////////////////////////////////////////////////
 	float m_fDefaultWidth; // Do not why has a default width
+
+	/////////////////////////////////////////////////////////////////////////////
+	// m_csPathname
+	//
+	// Stores the filename or key associated with the image.
+	/////////////////////////////////////////////////////////////////////////////
 	CString m_csPathname; // Image file name
+
+	/////////////////////////////////////////////////////////////////////////////
+	// m_nDimensionsCount / m_nFrameCount / m_pDimensionIDs
+	//
+	// Used for multi‑frame image handling (TIFF/GIF).
+	/////////////////////////////////////////////////////////////////////////////
 	UINT m_nDimensionsCount; // Image dimensions count, used for multi-page image
 	UINT m_nFrameCount; // Image page size
 	GUID* m_pDimensionIDs; // image dimension's id, used for multi-page image
+
+	/////////////////////////////////////////////////////////////////////////////
+	// m_pImage
+	//
+	// Underlying GDI+ Image pointer. All operations are performed on this object.
+	/////////////////////////////////////////////////////////////////////////////
 	Gdiplus::Image* m_pImage;
 };

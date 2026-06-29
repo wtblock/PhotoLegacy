@@ -1,5 +1,5 @@
-/////////////////////////////////////////////////////////////////////////////
-// Copyright � 2022 by W. T. Block, all rights reserved
+﻿/////////////////////////////////////////////////////////////////////////////
+// Copyright © 2022 by W. T. Block, all rights reserved
 /////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -8,166 +8,225 @@
 
 using namespace std;
 
-// template class to manage map of pointers to any class
+/////////////////////////////////////////////////////////////////////////////
+// CKeyedCollection
+//
+// A lightweight, memory‑safe associative container that maps keys (KEY)
+// to heap‑allocated objects (TYPE) stored in shared_ptr<TYPE>.
+//
+// Purpose:
+//   • Provides a safer alternative to raw pointer maps
+//   • Automatically manages object lifetime via shared_ptr
+//   • Offers simple property-style access (Count, Exists[], Items)
+//   • Supports diff operations (GetDeletedItems, GetNewItems)
+//   • Used throughout PhotoLegacy for metadata tables, lookup maps,
+//     month-name tables, image/comment maps, etc.
+//
+// Design notes:
+//   • Keys are stored by value (KEY)
+//   • Values are stored as shared_ptr<TYPE>
+//   • No copying of TYPE unless caller explicitly requests it
+//   • API mirrors MFC-style naming (Exists[], Count, Items)
+//   • Works with any key type supporting map<K,V> semantics
+/////////////////////////////////////////////////////////////////////////////
 template<class KEY, class TYPE>
 class CKeyedCollection
 {
-// public definitions
-public: 
-	// pair of key and shared_ptr<TYPE>
-	typedef pair<KEY,shared_ptr<TYPE> > PAIR_KEY_PTR;
-	// map of key and shared_ptr<TYPE>
-	typedef map<KEY, shared_ptr<TYPE> > MAP_KEY_PTR;
-	
-// protected data
+public:
+	/////////////////////////////////////////////////////////////////////////////
+	// PAIR_KEY_PTR
+	//
+	// Convenience typedef for a map entry: (KEY, shared_ptr<TYPE>).
+	/////////////////////////////////////////////////////////////////////////////
+	typedef pair<KEY, shared_ptr<TYPE>> PAIR_KEY_PTR;
+
+	/////////////////////////////////////////////////////////////////////////////
+	// MAP_KEY_PTR
+	//
+	// Underlying container type: std::map<KEY, shared_ptr<TYPE>>.
+	// Provides sorted key ordering and stable iteration.
+	/////////////////////////////////////////////////////////////////////////////
+	typedef map<KEY, shared_ptr<TYPE>> MAP_KEY_PTR;
+
 protected:
-	// map of keyed items
+	/////////////////////////////////////////////////////////////////////////////
+	// m_mapItems
+	//
+	// Internal storage for all keyed items. Keys are unique; values are
+	// shared_ptr<TYPE> to ensure automatic memory management.
+	/////////////////////////////////////////////////////////////////////////////
 	MAP_KEY_PTR m_mapItems;
 
-// methods
 public:
-	// number of Items
+	/////////////////////////////////////////////////////////////////////////////
+	// count / Count
+	//
+	// Returns the number of items stored in the collection.
+	// Exposed both as a method and a property.
+	/////////////////////////////////////////////////////////////////////////////
 	inline int count()
 	{
-		return (int)m_mapItems.size(); 
+		return (int)m_mapItems.size();
 	}
-	// number of Items
-	__declspec( property( get = count ) )
+	__declspec(property(get = count))
 		int Count;
 
-	// clear all Items from the map
+	/////////////////////////////////////////////////////////////////////////////
+	// clear
+	//
+	// Removes all items from the collection. Because values are stored in
+	// shared_ptr, clearing the map automatically frees all objects.
+	/////////////////////////////////////////////////////////////////////////////
 	void clear()
 	{
-		// empty the map
 		m_mapItems.clear();
 	}
-	
-	// does the key exist in the map?
-	bool exists( KEY key )
+
+	/////////////////////////////////////////////////////////////////////////////
+	// exists / Exists[]
+	//
+	// Returns true if the given key exists in the collection.
+	// Exists[key] provides property-style syntax.
+	/////////////////////////////////////////////////////////////////////////////
+	bool exists(KEY key)
 	{
-		shared_ptr<TYPE> value = find( key );
-		return value != 0;
+		shared_ptr<TYPE> value = find(key);
+		return value != nullptr;
 	}
-	// does the key exist in the map?
-	__declspec( property( get = exists ) )
+	__declspec(property(get = exists))
 		bool Exists[];
 
-	// find a key in the map
-	shared_ptr<TYPE> find( KEY key )
+	/////////////////////////////////////////////////////////////////////////////
+	// find
+	//
+	// Returns the shared_ptr<TYPE> associated with the key, or nullptr if
+	// the key is not present. Does not throw.
+	/////////////////////////////////////////////////////////////////////////////
+	shared_ptr<TYPE> find(KEY key)
 	{
-		const MAP_KEY_PTR::iterator posEnd = m_mapItems.end();
-		const MAP_KEY_PTR::iterator pos = m_mapItems.find( key );
-		shared_ptr<TYPE> value;
-		if ( pos != posEnd )
-		{
-			value = pos->second;
-		}
-
-		return value;
+		auto pos = m_mapItems.find(key);
+		if (pos != m_mapItems.end())
+			return pos->second;
+		return nullptr;
 	}
-	
-	// remove a key from the map
-	bool remove( KEY key )
-	{
-		bool bOK = false;
-		shared_ptr<TYPE> value = find( key );
-		if ( value != 0 )
-		{
-			m_mapItems.erase( key );
-			bOK = true;
-		}
 
-		return bOK;
-	}
-	
-	// add a key to the map and return false if it already exists
-	bool add( KEY key, shared_ptr<TYPE> value )
+	/////////////////////////////////////////////////////////////////////////////
+	// remove
+	//
+	// Removes the entry for the given key if it exists.
+	// Returns true if an item was removed.
+	/////////////////////////////////////////////////////////////////////////////
+	bool remove(KEY key)
 	{
-		const bool bExists = exists( key );
-		if ( bExists )
+		if (exists(key))
 		{
+			m_mapItems.erase(key);
+			return true;
+		}
+		return false;
+	}
+
+	/////////////////////////////////////////////////////////////////////////////
+	// add(key, shared_ptr<TYPE>)
+	//
+	// Adds a new entry to the map. Returns false if the key already exists.
+	// Caller supplies the shared_ptr<TYPE>.
+	/////////////////////////////////////////////////////////////////////////////
+	bool add(KEY key, shared_ptr<TYPE> value)
+	{
+		if (exists(key))
 			return false;
-		}
 
-		PAIR_KEY_PTR item( key, value );
-		m_mapItems.insert( item );
+		m_mapItems.insert(PAIR_KEY_PTR(key, value));
 		return true;
 	}
 
+	/////////////////////////////////////////////////////////////////////////////
+	// add(key, const TYPE&)
+	//
+	// Convenience overload: constructs a shared_ptr<TYPE> automatically
+	// using std::make_shared<TYPE>(value).
+	/////////////////////////////////////////////////////////////////////////////
 	bool add(KEY key, const TYPE& value)
 	{
 		return add(key, std::make_shared<TYPE>(value));
 	}
 
-// public properties
-public:
-	// map of keyed items
+	/////////////////////////////////////////////////////////////////////////////
+	// Items
+	//
+	// Returns a reference to the underlying map. Allows iteration:
+	//
+	//     for (auto& kv : myCollection.Items)
+	//         ...
+	//
+	/////////////////////////////////////////////////////////////////////////////
 	inline MAP_KEY_PTR& GetItems()
 	{
 		return m_mapItems;
 	}
-	// map of keyed items
-	__declspec( property( get=GetItems ))
+	__declspec(property(get = GetItems))
 		MAP_KEY_PTR Items;
 
-// public methods
 public:
-	// get deleted items returns a map of items that are missing from after
-	// that are in before
+	/////////////////////////////////////////////////////////////////////////////
+	// GetDeletedItems
+	//
+	// Computes the set of items present in "before" but missing in "after".
+	// Useful for diffing metadata tables, index updates, etc.
+	//
+	// Populates "deleted" with shared_ptr copies of the missing items.
+	// Returns true if any items were deleted.
+	/////////////////////////////////////////////////////////////////////////////
 	static bool GetDeletedItems
 	(
-		CKeyedCollection<KEY, TYPE>& before, 
+		CKeyedCollection<KEY, TYPE>& before,
 		CKeyedCollection<KEY, TYPE>& after,
 		CKeyedCollection<KEY, TYPE>& deleted
 	)
 	{
-		bool value = false;
-		for ( auto& node : before.Items )
+		for (auto& node : before.Items)
 		{
 			const KEY key = node.first;
-			if ( !after.Exists[ key ] )
-			{
-				//shared_ptr<TYPE> temp = shared_ptr<TYPE>( new TYPE( *node.second ));
-				deleted.add( node.first, node.second );
-			}
+			if (!after.Exists[key])
+				deleted.add(node.first, node.second);
 		}
-
-		value = deleted.Count > 0;
-		return value;
+		return deleted.Count > 0;
 	}
 
-	// get new items returns a map of items that are missing from before
-	// that are in after
+	/////////////////////////////////////////////////////////////////////////////
+	// GetNewItems
+	//
+	// Computes the set of items present in "after" but missing in "before".
+	// Useful for detecting newly added metadata entries.
+	//
+	// Populates "added" with shared_ptr copies of the new items.
+	// Returns true if any items were added.
+	/////////////////////////////////////////////////////////////////////////////
 	static bool GetNewItems
 	(
 		CKeyedCollection<KEY, TYPE>& before,
 		CKeyedCollection<KEY, TYPE>& after,
 		CKeyedCollection<KEY, TYPE>& added
-	)
+)
 	{
-		bool value = false;
-		for ( auto& node : after.Items )
+		for (auto& node : after.Items)
 		{
 			const KEY key = node.first;
-			if ( !before.Exists[ key ] )
-			{
-				//shared_ptr<TYPE> temp = shared_ptr<TYPE>( new TYPE( *node.second ));
-				added.add( node.first, node.second );
-			}
+			if (!before.Exists[key])
+				added.add(node.first, node.second);
 		}
-
-		value = added.Count > 0;
-		return value;
+		return added.Count > 0;
 	}
 
-// public construction / destruction
-public:
-	// constructor
-	CKeyedCollection( void )
-	{
-	}
-	// destructor
-	virtual ~CKeyedCollection( void )
+	/////////////////////////////////////////////////////////////////////////////
+	// Constructor / Destructor
+	//
+	// Constructor initializes an empty map.
+	// Destructor clears the map, releasing all shared_ptr-managed objects.
+	/////////////////////////////////////////////////////////////////////////////
+	CKeyedCollection() {}
+	virtual ~CKeyedCollection()
 	{
 		clear();
 	}

@@ -1,5 +1,5 @@
-/////////////////////////////////////////////////////////////////////////////
-// Copyright � by W. T. Block, all rights reserved
+﻿/////////////////////////////////////////////////////////////////////////////
+// Copyright © by W. T. Block, all rights reserved
 /////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -8,19 +8,48 @@
 using namespace std;
 
 /////////////////////////////////////////////////////////////////////////////
-// this class is used to buffer data in a type safe representation
-// that can contain simple vector, two dimensional array, and three 
-// dimensional data as an array of arrays
-
-// columns refer to the columns of a matrix and defaults to one
-// column. elements refer to the number of values in a level for each column
-// and also defaults to one.  the default constructor will therefore create
-// a simple vector.
-
-// element refers to a single value of an intrinsic type (long, float, etc.)
-
-// all indices are zero based (i.e. row, column, element)
-
+// CVariantVector
+//
+// A flexible, type‑safe numeric buffer capable of storing one‑dimensional
+// vectors, two‑dimensional matrices, or three‑dimensional “array of arrays”
+// structures. Designed for scientific/engineering applications where data
+// may originate from COM VARIANT arrays, binary buffers, or mixed numeric
+// formats.
+//
+// Key Features:
+//   • Supports all common VARIANT numeric types:
+//       VT_I1, VT_UI1, VT_I2, VT_UI2, VT_I4, VT_UI4,
+//       VT_I8, VT_UI8, VT_R4, VT_R8
+//
+//   • Stores data in strongly‑typed std::vector<T> buffers
+//     (one vector per supported type)
+//
+//   • Supports multi‑dimensional addressing:
+//       - Columns (matrix width)
+//       - ColumnElements (elements per column)
+//       - Rows (computed from total element count)
+//       - getIndex(row, column, element)
+//
+//   • Supports null values (default −9999) for sparse or missing data
+//
+//   • Supports unit metadata (Units, UnitClass)
+//
+//   • Supports linear transformations:
+//       Convert(multiplier, additive)
+//
+//   • Computes statistics in a single pass:
+//       FirstLive, LastLive, Minimum, Maximum, Average
+//
+//   • Can import/export COM SafeArrays
+//
+//   • Can reinterpret data as a different VARIANT type using changeType()
+//     (byte‑preserving reinterpretation)
+//
+//   • Provides both COleVariant and double‑precision accessors
+//
+// This class is used in legacy scientific/engineering modules where
+// flexible numeric storage and COM interop are required.
+/////////////////////////////////////////////////////////////////////////////
 class CVariantVector
 {
 // protected data
@@ -641,7 +670,18 @@ public:
 
 // construction / destruction
 public:
+	/////////////////////////////////////////////////////////////////////////////
+	// Default constructor
+	//
+	// Initializes the vector to an empty state with:
+	//   • Null = −9999
+	//   • Type = VT_EMPTY
+	//   • 1 column, 1 element per column
+	//   • Conversion parameters reset
+	//   • Statistics reset
+	/////////////////////////////////////////////////////////////////////////////
 	CVariantVector(void);
+
 	CVariantVector
 	(	double dNull, // the empty value
 		VARENUM eType, // variant type

@@ -1,4 +1,4 @@
-/////////////////////////////////////////////////////////////////////////////
+﻿/////////////////////////////////////////////////////////////////////////////
 // Copyright (c) 2022 by W. T. Block, All Rights Reserved
 /////////////////////////////////////////////////////////////////////////////
 
@@ -8,146 +8,199 @@
 
 using namespace std;
 
-// template class to manage arrays of pointers to any class
+/////////////////////////////////////////////////////////////////////////////
+// CSmartArray<TYPE>
+//
+// A lightweight, memory‑safe dynamic array that stores objects of TYPE
+// using shared_ptr<TYPE>. Provides:
+//
+//   • Automatic memory management (no raw pointers)
+//   • Bounds‑checked access via valid()
+//   • Append, insert, remove, resize operations
+//   • Property-style access (Items, Count)
+//   • Safe get/set semantics
+//
+// This class is the array counterpart to CKeyedCollection:
+//   - CKeyedCollection manages keyed objects (map)
+//   - CSmartArray manages ordered objects (vector)
+//
+// Used throughout PhotoLegacy for collections of metadata objects,
+// image entries, UI items, and other ordered lists.
+/////////////////////////////////////////////////////////////////////////////
 template<class TYPE> class CSmartArray
 {
-// protected data
 protected:
-	// array of items
-	vector< shared_ptr<TYPE> > m_arrItems;
-	
-// properties
-public:
-	// array of items
-	inline vector<shared_ptr<TYPE> >& GetItems()
-	{ 
-		return m_arrItems; 
-	}
-	// array of items
-	__declspec( property( get=GetItems )) 
-		vector<shared_ptr<TYPE> > Items;
+	/////////////////////////////////////////////////////////////////////////////
+	// m_arrItems
+	//
+	// Internal storage: vector<shared_ptr<TYPE>>.
+	// Each element is heap‑allocated and reference‑counted.
+	/////////////////////////////////////////////////////////////////////////////
+	vector<shared_ptr<TYPE>> m_arrItems;
 
-	// number of Items
-	inline long GetCount()
-	{ 
-		return (long)m_arrItems.size(); 
+public:
+	/////////////////////////////////////////////////////////////////////////////
+	// Items
+	//
+	// Returns a reference to the underlying vector. Allows iteration:
+	//
+	//     for (auto& p : myArray.Items)
+	//         ...
+	//
+	/////////////////////////////////////////////////////////////////////////////
+	inline vector<shared_ptr<TYPE>>& GetItems()
+	{
+		return m_arrItems;
 	}
-	// number of Items
-	__declspec( property( get=GetCount ))
+	__declspec(property(get = GetItems))
+		vector<shared_ptr<TYPE>> Items;
+
+	/////////////////////////////////////////////////////////////////////////////
+	// Count
+	//
+	// Returns the number of elements in the array.
+	/////////////////////////////////////////////////////////////////////////////
+	inline long GetCount()
+	{
+		return (long)m_arrItems.size();
+	}
+	__declspec(property(get = GetCount))
 		long Count;
 
-
-// methods
 public:
-	// valid index?
-	inline bool valid( long lIndex )
+	/////////////////////////////////////////////////////////////////////////////
+	// valid
+	//
+	// Returns true if the index is within bounds (0 <= index < Count).
+	// Used by get(), set(), and remove() to ensure safe access.
+	/////////////////////////////////////////////////////////////////////////////
+	inline bool valid(long lIndex)
 	{
-		const long nItems = Count;
-		return ( 0 <= lIndex && lIndex < nItems );
+		return (0 <= lIndex && lIndex < Count);
 	}
 
-	// clear all Items from array
+	/////////////////////////////////////////////////////////////////////////////
+	// clear
+	//
+	// Removes all elements from the array. Because values are stored in
+	// shared_ptr, clearing the vector automatically frees all objects.
+	/////////////////////////////////////////////////////////////////////////////
 	inline void clear()
 	{
-		// empty the array
 		m_arrItems.clear();
 	}
-	
-	// resize Item array
-	inline void resize( long nSize )
+
+	/////////////////////////////////////////////////////////////////////////////
+	// resize
+	//
+	// Resizes the array to nSize. New elements are default‑constructed
+	// shared_ptr<TYPE>() (i.e., null pointers).
+	/////////////////////////////////////////////////////////////////////////////
+	inline void resize(long nSize)
 	{
-		m_arrItems.resize( nSize );
+		m_arrItems.resize(nSize);
 	}
 
-	// add a new Item and return its index
+	/////////////////////////////////////////////////////////////////////////////
+	// add
+	//
+	// Appends a new default‑constructed TYPE object to the array and returns
+	// its index. Equivalent to push_back(make_shared<TYPE>()).
+	/////////////////////////////////////////////////////////////////////////////
 	inline long add()
 	{
-		{
-			shared_ptr<TYPE> pItem = shared_ptr<TYPE>( new TYPE );
-			m_arrItems.push_back( pItem );
-		}
-
+		m_arrItems.push_back(std::make_shared<TYPE>());
 		return Count - 1;
 	}
 
-	// remove an item
-	inline bool remove( long lIndex )
+	/////////////////////////////////////////////////////////////////////////////
+	// remove
+	//
+	// Removes the element at the given index, shifting all later elements
+	// left by one. Returns true if the element was removed.
+	/////////////////////////////////////////////////////////////////////////////
+	inline bool remove(long lIndex)
 	{
-		bool bOK = false;
-		if ( valid( lIndex ))
-		{
-			// remove the item's position from the array
-			typename vector<shared_ptr<TYPE>>::iterator pos = m_arrItems.begin();
-			pos += lIndex;
-			m_arrItems.erase( pos ); 
-			bOK = true;	
-		}
+		if (!valid(lIndex))
+			return false;
 
-		return bOK;
-	}
-	
-	// Item at an index, NULL if out of range
-	// if the optional release is true, the method copying the pointer
-	// is responsible for deleting it and the array's pointer is set to zero.
-	inline shared_ptr<TYPE> get( long lIndex )
-	{
-		shared_ptr<TYPE> pItem;
-		if ( valid( lIndex ))
-		{
-			pItem = m_arrItems[ lIndex ];
-		}
-
-		return pItem;
+		auto pos = m_arrItems.begin() + lIndex;
+		m_arrItems.erase(pos);
+		return true;
 	}
 
-	// Item pointer at an index--will extend the size if necessary,
-	// delete the contents of the existing pointer, and copy the
-	// given pointer to the location
-	inline void set( long lIndex, shared_ptr<TYPE> pItem )
+	/////////////////////////////////////////////////////////////////////////////
+	// get
+	//
+	// Returns the shared_ptr<TYPE> at the given index, or nullptr if the
+	// index is out of range.
+	/////////////////////////////////////////////////////////////////////////////
+	inline shared_ptr<TYPE> get(long lIndex)
 	{
-		// resize if necessary
-		if ( lIndex >= Count )
-		{
-			resize( lIndex + 1 );
-		}
-		
-		// put the item in the array
-		if ( valid( lIndex ))
-		{
-			m_arrItems[ lIndex ] = pItem;
-		}
+		if (valid(lIndex))
+			return m_arrItems[lIndex];
+		return nullptr;
 	}
 
-	// Item at an index--will extend the size if necessary,
-	// and replace the contents of the existing element
-	inline void append( shared_ptr<TYPE> pItem )
+	/////////////////////////////////////////////////////////////////////////////
+	// set
+	//
+	// Assigns the given shared_ptr<TYPE> to the specified index.
+	// Automatically resizes the array if the index is beyond the current size.
+	/////////////////////////////////////////////////////////////////////////////
+	inline void set(long lIndex, shared_ptr<TYPE> pItem)
 	{
-		m_arrItems.push_back( pItem );
+		if (lIndex >= Count)
+			resize(lIndex + 1);
+
+		if (valid(lIndex))
+			m_arrItems[lIndex] = pItem;
 	}
 
-	// Add a new item by value (copy)
+	/////////////////////////////////////////////////////////////////////////////
+	// append(shared_ptr<TYPE>)
+	//
+	// Appends an existing shared_ptr<TYPE> to the array.
+	/////////////////////////////////////////////////////////////////////////////
+	inline void append(shared_ptr<TYPE> pItem)
+	{
+		m_arrItems.push_back(pItem);
+	}
+
+	/////////////////////////////////////////////////////////////////////////////
+	// append(const TYPE&)
+	//
+	// Appends a new element by value. The value is copied into a new
+	// shared_ptr<TYPE>.
+	/////////////////////////////////////////////////////////////////////////////
 	inline long append(const TYPE& value)
 	{
 		m_arrItems.push_back(std::make_shared<TYPE>(value));
 		return Count - 1;
 	}
 
-	// Add a new item by move (no copy)
+	/////////////////////////////////////////////////////////////////////////////
+	// append(TYPE&&)
+	//
+	// Appends a new element by move. The value is moved into a new
+	// shared_ptr<TYPE> without copying.
+	/////////////////////////////////////////////////////////////////////////////
 	inline long append(TYPE&& value)
 	{
 		m_arrItems.push_back(std::make_shared<TYPE>(std::move(value)));
 		return Count - 1;
 	}
 
-// construction / destruction
 public:
-	CSmartArray()
-	{
-	}
-
+	/////////////////////////////////////////////////////////////////////////////
+	// Constructor / Destructor
+	//
+	// Constructor initializes an empty array.
+	// Destructor clears the array, releasing all shared_ptr-managed objects.
+	/////////////////////////////////////////////////////////////////////////////
+	CSmartArray() {}
 	virtual ~CSmartArray()
 	{
 		clear();
 	}
-
 };

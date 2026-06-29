@@ -1,12 +1,28 @@
-/////////////////////////////////////////////////////////////////////////////
-// Copyright � by W. T. Block, all rights reserved
+﻿/////////////////////////////////////////////////////////////////////////////
+// Copyright © by W. T. Block, all rights reserved
 /////////////////////////////////////////////////////////////////////////////
 #include "pch.h"
 #include "CHelper.h"
 #include "PlusGDI.h"
 
 using namespace Gdiplus;
+/////////////////////////////////////////////////////////////////////////////
+// CPlusGDI
+//
+// Source implementation for high‑level GDI+ image wrapper.
+// Provides safe loading, saving, drawing, multi‑frame handling,
+// encoder lookup, and Win32 handle extraction.
+//
+// This class abstracts away raw GDI+ usage and provides a consistent,
+// reliable interface for PhotoPrinter, PhotoExplorer, PlotStudio,
+// and other imaging tools.
+/////////////////////////////////////////////////////////////////////////////
 
+/////////////////////////////////////////////////////////////////////////////
+// Default constructor
+//
+// Initializes all internal members to a clean state.
+// No image is loaded at this point.
 /////////////////////////////////////////////////////////////////////////////
 CPlusGDI::CPlusGDI()
 {
@@ -14,12 +30,19 @@ CPlusGDI::CPlusGDI()
 }
 
 /////////////////////////////////////////////////////////////////////////////
+// Construct from CBitmap*
+// Converts an HBITMAP into a GDI+ Bitmap using Bitmap::FromHBITMAP.
+// Useful for interop with Win32 GDI bitmaps.
+/////////////////////////////////////////////////////////////////////////////
 CPlusGDI::CPlusGDI(CBitmap* pBitmap)
 {
 	Initialize();
-	m_pImage = (Image*)Bitmap::FromHBITMAP( *pBitmap, NULL );
+	m_pImage = (Image*)Bitmap::FromHBITMAP(*pBitmap, NULL);
 }
 
+/////////////////////////////////////////////////////////////////////////////
+// Construct from GDI+ Bitmap*
+// Wraps an existing GDI+ Bitmap without copying.
 /////////////////////////////////////////////////////////////////////////////
 CPlusGDI::CPlusGDI(Bitmap* pBitmap)
 {
@@ -28,12 +51,20 @@ CPlusGDI::CPlusGDI(Bitmap* pBitmap)
 }
 
 /////////////////////////////////////////////////////////////////////////////
+// Destructor
+//
+// Releases all GDI+ resources and resets internal state.
+/////////////////////////////////////////////////////////////////////////////
 CPlusGDI::~CPlusGDI()
 {
 	CleanUp();
+}
 
-} // ~CPlusGDI()
-
+/////////////////////////////////////////////////////////////////////////////
+// Initialize
+//
+// Resets all internal members to default values.
+// Called by all constructors before assigning m_pImage.
 /////////////////////////////////////////////////////////////////////////////
 void CPlusGDI::Initialize()
 {
@@ -42,19 +73,31 @@ void CPlusGDI::Initialize()
 	m_nDimensionsCount = 0;
 	m_fDefaultWidth = 0.0f;
 	m_nFrameCount = 0;
+}
 
-} // Initialize
-
+/////////////////////////////////////////////////////////////////////////////
+// CleanUp
+//
+// Frees all allocated resources:
+//   • Deletes dimension ID array
+//   • Deletes GDI+ Image object
+//
+// Safe to call multiple times.
 /////////////////////////////////////////////////////////////////////////////
 void CPlusGDI::CleanUp()
 {
-	CHelper::SAFE_DELETE_ARRAY( m_pDimensionIDs );
-	CHelper::SAFE_DELETE( m_pImage );
-
-} // CleanUp
+	CHelper::SAFE_DELETE_ARRAY(m_pDimensionIDs);
+	CHelper::SAFE_DELETE(m_pImage);
+}
 
 /////////////////////////////////////////////////////////////////////////////
-// determines if the given file extension can be opened
+// IsImageFormatOpenSupported
+//
+// Returns true if the given extension corresponds to a format that GDI+
+// can open. Uses ImageFormatOpenSupported_ID lookup table.
+//
+// Optionally displays a warning message.
+/////////////////////////////////////////////////////////////////////////////
 bool CPlusGDI::IsImageFormatOpenSupported
 (
 	CString strImageFormat, 
@@ -103,7 +146,13 @@ bool CPlusGDI::IsImageFormatOpenSupported
 } // IsImageFormatOpenSupported
 
 /////////////////////////////////////////////////////////////////////////////
-// determines if the given file extension can be saved
+// IsImageFormatSaveSupported
+//
+// Returns true if the given extension corresponds to a format that GDI+
+// can save. Uses ImageFormatSaveSupported_ID lookup table.
+//
+// Optionally displays a warning message.
+/////////////////////////////////////////////////////////////////////////////
 bool CPlusGDI::IsImageFormatSaveSupported
 (
 	CString strImageFormat, 
@@ -152,8 +201,11 @@ bool CPlusGDI::IsImageFormatSaveSupported
 }// IsImageFormatSaveSupported
 
 /////////////////////////////////////////////////////////////////////////////
-// Pass the image extension, like bmp or jpg, it will return true if this
-// kind of image can be saved as multi-frames; otherwise, it will return false
+// IsImageFormatSupportMultiFrame
+//
+// Returns true if the format supports multi‑frame saving (TIFF/GIF).
+// Currently only TIFF formats are supported for multi‑frame output.
+/////////////////////////////////////////////////////////////////////////////
 bool CPlusGDI::IsImageFormatSupportMultiFrame( CString strImageFormat )
 {
 	USES_CONVERSION;
@@ -179,9 +231,20 @@ bool CPlusGDI::IsImageFormatSupportMultiFrame( CString strImageFormat )
 } // IsImageFormatSupportMultiFrame
 
 /////////////////////////////////////////////////////////////////////////////
-// open the image from an IStream interface pointer.  the optional
-// key string is a string used to identify the image and is stored in the 
-// image's pathname.
+// Open(IStream*, key)
+//
+// Loads an image from an IStream. Handles a GDI+ quirk requiring the
+// stream to be rewound before calling Image::FromStream.
+//
+// Behavior:
+//   • Rewinds stream
+//   • Clears existing image
+//   • Attempts load
+//   • If first attempt fails, retries with embedded color management
+//   • Retrieves frame dimensions and frame count
+//
+// Returns true on success.
+/////////////////////////////////////////////////////////////////////////////
 bool CPlusGDI::Open( IStream* pStream, LPCTSTR key )
 {	// this seek needs to be here because of a quirk of GDI+ 
 	LARGE_INTEGER li;
@@ -239,7 +302,13 @@ bool CPlusGDI::Open( IStream* pStream, LPCTSTR key )
 } // Open
 
 /////////////////////////////////////////////////////////////////////////////
-// Open the given image path
+// Open(path)
+//
+// Loads an image from a file using Image::FromFile.
+// Initializes frame dimension list and frame count.
+//
+// Returns true on success.
+/////////////////////////////////////////////////////////////////////////////
 bool CPlusGDI::Open( LPCTSTR lpszPathName )
 {
 	USES_CONVERSION;
@@ -282,7 +351,13 @@ bool CPlusGDI::Open( LPCTSTR lpszPathName )
 } // Open
 
 /////////////////////////////////////////////////////////////////////////////
-// Save the data inside pImage as file name lpszPathName
+// Save(path)
+//
+// Saves the current image to disk using the encoder determined by
+// file extension. Uses EncoderSaveFlag with GIF89/LZW/Flush flags.
+//
+// Returns true on success.
+/////////////////////////////////////////////////////////////////////////////
 bool CPlusGDI::Save( LPCTSTR lpszPathName )
 {
 	USES_CONVERSION;
@@ -329,7 +404,13 @@ bool CPlusGDI::Save( LPCTSTR lpszPathName )
 } // Save
 
 /////////////////////////////////////////////////////////////////////////////
-// Save the image data to stream as the specified image format
+// Save(IStream*, formatID, inputImage)
+//
+// Saves either the provided image or the current image to an IStream
+// using the encoder associated with formatID.
+//
+// Returns true on success.
+/////////////////////////////////////////////////////////////////////////////
 bool CPlusGDI::Save
 (
 	IStream* pIStream, 
@@ -374,9 +455,13 @@ bool CPlusGDI::Save
 } // Save
 
 /////////////////////////////////////////////////////////////////////////////
-// Save the data inside the Enhanced Meta-file HMF as file name lpszPathName
-// If bAppend is false, then overwrite the old data if the lpszPathName file
-// already existed; otherwise, append the image to the tail of the image file
+// Save(hmf, size, resolution, path, append, close)
+//
+// Renders an enhanced metafile (HENHMETAFILE) into a bitmap and saves it
+// as a raster image. Supports append mode for multi‑frame formats.
+//
+// Returns true on success.
+/////////////////////////////////////////////////////////////////////////////
 bool CPlusGDI::Save
 (
 	HENHMETAFILE& hmf, 
@@ -425,6 +510,14 @@ bool CPlusGDI::Save
 } // Save
 
 /////////////////////////////////////////////////////////////////////////////
+// SaveAdd
+//
+// Dispatches save operation to either:
+//   • SaveSingleFrameImage
+//   • SaveMultiFrameImage
+//
+// Based on whether the format supports multi‑frame output.
+/////////////////////////////////////////////////////////////////////////////
 bool CPlusGDI::SaveAdd
 (
 	Image* pImage, 
@@ -456,9 +549,18 @@ bool CPlusGDI::SaveAdd
 } // SaveAdd
 
 /////////////////////////////////////////////////////////////////////////////
-// Save the data inside pImage as file name lpszPathName
-// If bAppend is false, then overwrite the old data if the lpszPathName file
-// already existed; otherwise, append the image to the tail of the image file
+// SaveSingleFrameImage
+//
+// Appends or overwrites a single‑frame image.
+//
+// Behavior:
+//   • If appending, loads existing image
+//   • Creates a new bitmap large enough to hold old + new image
+//   • Draws old image, then new image below it
+//   • Saves using correct encoder
+//
+// Returns true on success.
+/////////////////////////////////////////////////////////////////////////////
 bool CPlusGDI::SaveSingleFrameImage
 (
 	Image* pImage,
@@ -592,6 +694,16 @@ bool CPlusGDI::SaveSingleFrameImage
 } // SaveSingleFrameImage
 
 /////////////////////////////////////////////////////////////////////////////
+// SaveMultiFrameImage
+//
+// Handles multi‑frame saving (TIFF).
+//
+// Behavior:
+//   • If appending, uses SaveAdd() with EncoderValueMultiFrame
+//   • If overwriting, saves first frame then recursively appends others
+//
+// Returns true on success.
+/////////////////////////////////////////////////////////////////////////////
 bool CPlusGDI::SaveMultiFrameImage
 (
 	Image* pImage,
@@ -701,7 +813,10 @@ bool CPlusGDI::SaveMultiFrameImage
 } // SaveMultiFrameImage
 
 /////////////////////////////////////////////////////////////////////////////
-// Get the encoder extension corresponding to the image format id
+// GetEncoderExtByID
+//
+// Maps IMAGE_FORMAT_ID → encoder MIME type (e.g., "image/jpeg").
+/////////////////////////////////////////////////////////////////////////////
 bool CPlusGDI::GetEncoderExtByID( UINT nImageFormatID, LPWSTR pEncoderExt )
 {
 	bool value = false;
@@ -728,7 +843,11 @@ bool CPlusGDI::GetEncoderExtByID( UINT nImageFormatID, LPWSTR pEncoderExt )
 } // GetEncoderExtByID
 
 /////////////////////////////////////////////////////////////////////////////
-// Get the image format id corresponding to the image extension
+// GetFormatIDByExt
+//
+// Maps file extension → IMAGE_FORMAT_ID.
+// Removes leading '.' if present.
+/////////////////////////////////////////////////////////////////////////////
 bool CPlusGDI::GetFormatIDByExt( LPCWSTR pExt, UINT& nImageFormatID)
 {
 	bool value = false;
@@ -760,6 +879,11 @@ bool CPlusGDI::GetFormatIDByExt( LPCWSTR pExt, UINT& nImageFormatID)
 } // GetFormatIDByExt
 
 /////////////////////////////////////////////////////////////////////////////
+// GetWidth / GetHeight
+//
+// Returns pixel dimensions of the image.
+/////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
 // Get image width in pixels
 int CPlusGDI::GetWidth()
 {
@@ -789,6 +913,11 @@ int CPlusGDI::GetHeight()
 	return value;
 } // GetHeight
 
+/////////////////////////////////////////////////////////////////////////////
+// GetWidthInches / GetHeightInches
+//
+// Converts pixel dimensions to physical inches using DPI.
+/////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 // Get image width in inches
 double CPlusGDI::GetWidthInches()
@@ -826,9 +955,14 @@ double CPlusGDI::GetHeightInches()
 } // GetHeightInches
 
 /////////////////////////////////////////////////////////////////////////////
-// get the metafile handle for the iFrameIndex-th page. The default
-// is the first page
-bool CPlusGDI::GetEnhMetafileHandle 
+// GetEnhMetafileHandle
+//
+// Selects a frame, draws it into a metafile DC, and returns the
+// enhanced metafile handle.
+//
+// Used for vector output and printing.
+/////////////////////////////////////////////////////////////////////////////
+bool CPlusGDI::GetEnhMetafileHandle
 (
 	CDC& dcRef, 
 	HENHMETAFILE& hENH,
@@ -883,7 +1017,11 @@ bool CPlusGDI::GetEnhMetafileHandle
 } // GetEnhMetafileHandle
 
 /////////////////////////////////////////////////////////////////////////////
-// Get bitmap handle for creating a brush
+// GetDIBHandleForBrush
+//
+// Creates a DIBSection suitable for pattern brush creation.
+// Draws the image into a memory DC and returns HBITMAP.
+/////////////////////////////////////////////////////////////////////////////
 bool CPlusGDI::GetDIBHandleForBrush( CDC* pDC, HBITMAP& hBitmap )
 {
 	bool value = false;
@@ -946,7 +1084,11 @@ bool CPlusGDI::GetDIBHandleForBrush( CDC* pDC, HBITMAP& hBitmap )
 } // GetDIBHandle
 
 /////////////////////////////////////////////////////////////////////////////
-// Get bitmap handle for current image
+// GetHBITMAP
+//
+// Renders the image into a 32‑bit bitmap and returns HBITMAP.
+// Background is forced to white.
+/////////////////////////////////////////////////////////////////////////////
 bool CPlusGDI::GetHBITMAP(HBITMAP& hBitmap)
 {
 	bool value = false;
@@ -977,7 +1119,11 @@ bool CPlusGDI::GetHBITMAP(HBITMAP& hBitmap)
 } // GetHBITMAP
 
 /////////////////////////////////////////////////////////////////////////////
-// Get icon handle for current image
+// GetHICON
+//
+// Renders the image into a bitmap and returns HICON.
+// Background is forced to white.
+/////////////////////////////////////////////////////////////////////////////
 bool CPlusGDI::GetHICON(HICON& hIcon)
 {
 	bool value = false;
@@ -1008,7 +1154,10 @@ bool CPlusGDI::GetHICON(HICON& hIcon)
 } // GetHICON
 
 /////////////////////////////////////////////////////////////////////////////
-// return the number of bits used for each pixel
+// GetBitsPerPixel
+//
+// Returns the color depth based on PixelFormat.
+/////////////////////////////////////////////////////////////////////////////
 long CPlusGDI::GetBitsPerPixel()
 {
 	long value = -1;
@@ -1054,7 +1203,11 @@ long CPlusGDI::GetBitsPerPixel()
 } // GetBitsPerPixel
 
 /////////////////////////////////////////////////////////////////////////////
-// Get the CLSID for the specified image format
+// GetEncoderClsid(format, pClsid)
+//
+// Retrieves the CLSID for the encoder matching the MIME type.
+// Required for GDI+ Image::Save().
+/////////////////////////////////////////////////////////////////////////////
 int CPlusGDI::GetEncoderClsid( LPCWSTR format, CLSID* pClsid )
 {
 	int value = -1;
@@ -1091,6 +1244,14 @@ int CPlusGDI::GetEncoderClsid( LPCWSTR format, CLSID* pClsid )
 	return value;
 } // GetEncoderClsid
 
+/////////////////////////////////////////////////////////////////////////////
+// Draw(pDC, rectDest, rectSrc)
+//
+// Draws a portion of the image into the destination rectangle using
+// StretchDIBits. Handles monochrome vs color stretch modes and
+// upside‑down DIB orientation.
+//
+// Used for printing, previewing, and UI rendering.
 /////////////////////////////////////////////////////////////////////////////
 void CPlusGDI::Draw( CDC* pDC, CRect& rectDest, CRect& rectSrc )
 {
@@ -1151,6 +1312,13 @@ void CPlusGDI::Draw( CDC* pDC, CRect& rectDest, CRect& rectSrc )
 	CHelper::SAFE_DELETE_ARRAY( pSourceBmpinfo );
 } // Draw
 
+/////////////////////////////////////////////////////////////////////////////
+// CreateDIBPatternBrush
+//
+// Scales the bitmap, converts to monochrome if needed, creates a square
+// DIBSection, and returns an HBRUSH suitable for pattern fills.
+//
+// Used for hatch patterns, texture fills, and printing.
 /////////////////////////////////////////////////////////////////////////////
 bool CPlusGDI::CreateDIBPatternBrush
 (

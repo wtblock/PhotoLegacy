@@ -7,6 +7,7 @@
 
 using namespace std;
 
+/////////////////////////////////////////////////////////////////////////////
 struct IndexHeader
 {
 	uint32_t magic;
@@ -15,16 +16,27 @@ struct IndexHeader
 	uint32_t tokenCount;
 };
 
+/////////////////////////////////////////////////////////////////////////////
 CPhotoQueryEngine::CPhotoQueryEngine()
 {
 }
 
+/////////////////////////////////////////////////////////////////////////////
 CPhotoQueryEngine::~CPhotoQueryEngine()
 {
 }
 
 /////////////////////////////////////////////////////////////////////////////
-// Load the binary index from disk
+// DumpIndex
+//
+// Prints the entire in‑memory index to the console for debugging.
+// Shows:
+//   - All image paths
+//   - All tokens
+//   - Optional posting lists (image IDs for each token)
+//
+// This is a diagnostic tool used to verify that the binary index
+// was loaded correctly and that the inverted index structure is valid.
 /////////////////////////////////////////////////////////////////////////////
 void CPhotoQueryEngine::DumpIndex(bool showPostings)
 {
@@ -56,10 +68,22 @@ void CPhotoQueryEngine::DumpIndex(bool showPostings)
 	}
 
 	wprintf(L"===== END OF INDEX DUMP =====\n");
-}
+} // DumpIndex
 
 /////////////////////////////////////////////////////////////////////////////
-// Load the binary index from disk
+// LoadBinaryIndex
+//
+// Loads a .phix binary index file from disk and reconstructs:
+//   - The image path table
+//   - The token table
+//   - The inverted index (token → posting list)
+//
+// Handles:
+//   - UTF‑16 string decoding
+//   - Relative path expansion (".\" → working directory)
+//   - Sorted posting lists for fast AND/OR operations
+//
+// Returns true on success, false on any format or I/O error.
 /////////////////////////////////////////////////////////////////////////////
 bool CPhotoQueryEngine::LoadBinaryIndex(const CString& indexPath)
 {
@@ -171,9 +195,21 @@ bool CPhotoQueryEngine::LoadBinaryIndex(const CString& indexPath)
 } // LoadBinaryIndex
 
 /////////////////////////////////////////////////////////////////////////////
-// Tokenize a string into lowercase alphanumeric tokens
+// Tokenize
+//
+// Converts an input string into a list of lowercase alphanumeric tokens.
+// Splits on any non‑alphanumeric character.
+// Used for both:
+//   - Query tokenization
+//   - Internal AND‑group tokenization
+//
+// Example:
+//   "Mary Beth Block, Sr." → ["mary", "beth", "block", "sr"]
 /////////////////////////////////////////////////////////////////////////////
-void CPhotoQueryEngine::Tokenize(const CString& text, vector<CString>& outTokens)
+void CPhotoQueryEngine::Tokenize
+(
+	const CString& text, vector<CString>& outTokens
+)
 {
 	CString token;
 	int len = text.GetLength();
@@ -198,12 +234,22 @@ void CPhotoQueryEngine::Tokenize(const CString& text, vector<CString>& outTokens
 
 	if (!token.IsEmpty())
 		outTokens.push_back(token);
-}
+} // Tokenize
 
 /////////////////////////////////////////////////////////////////////////////
-// Split query on OR operator '|'
+// SplitOR
+//
+// Splits a full query string into OR‑groups using the '|' operator.
+//
+// Example:
+//   "mary beth|block sr" → ["mary beth", "block sr"]
+//
+// Each group is later evaluated independently and OR‑merged.
 /////////////////////////////////////////////////////////////////////////////
-void CPhotoQueryEngine::SplitOR(const CString& query, vector<CString>& outGroups)
+void CPhotoQueryEngine::SplitOR
+(
+	const CString& query, vector<CString>& outGroups
+)
 {
 	int start = 0;
 	int pos = 0;
@@ -215,22 +261,44 @@ void CPhotoQueryEngine::SplitOR(const CString& query, vector<CString>& outGroups
 	}
 
 	outGroups.push_back(query.Mid(start).Trim());
-}
+} // SplitOR
 
 /////////////////////////////////////////////////////////////////////////////
-// Split a group into AND tokens
+// SplitAND
+//
+// Splits a single OR‑group into AND‑tokens.
+// Uses Tokenize() to extract normalized alphanumeric tokens.
+//
+// Example:
+//   "mary beth" → ["mary", "beth"]
 /////////////////////////////////////////////////////////////////////////////
-void CPhotoQueryEngine::SplitAND(const CString& group, vector<CString>& outTokens)
+void CPhotoQueryEngine::SplitAND
+(
+	const CString& group, vector<CString>& outTokens
+)
 {
 	Tokenize(group, outTokens);
-}
+} // SplitAND
 
 /////////////////////////////////////////////////////////////////////////////
-// Sorted intersection (AND)
+// Intersect
+//
+// Computes the sorted intersection (logical AND) of two posting lists.
+// Posting lists contain sorted image IDs.
+//
+// Example:
+//   a = [1, 3, 5]
+//   b = [3, 4, 5]
+//   result = [3, 5]
+//
+// Used to evaluate AND‑conditions inside a single OR‑group.
 /////////////////////////////////////////////////////////////////////////////
-void CPhotoQueryEngine::Intersect(const vector<uint32_t>& a,
+void CPhotoQueryEngine::Intersect
+(
+	const vector<uint32_t>& a,
 	const vector<uint32_t>& b,
-	vector<uint32_t>& out)
+	vector<uint32_t>& out
+)
 {
 	out.clear();
 	size_t i = 0, j = 0;
@@ -251,14 +319,27 @@ void CPhotoQueryEngine::Intersect(const vector<uint32_t>& a,
 			j++;
 		}
 	}
-}
+} // Intersect
 
 /////////////////////////////////////////////////////////////////////////////
-// Sorted union (OR)
+// Union
+//
+// Computes the sorted union (logical OR) of two posting lists.
+// Posting lists contain sorted image IDs.
+//
+// Example:
+//   a = [1, 3, 5]
+//   b = [3, 4, 5]
+//   result = [1, 3, 4, 5]
+//
+// Used to merge results from multiple OR‑groups.
 /////////////////////////////////////////////////////////////////////////////
-void CPhotoQueryEngine::Union(const vector<uint32_t>& a,
+void CPhotoQueryEngine::Union
+(
+	const vector<uint32_t>& a,
 	const vector<uint32_t>& b,
-	vector<uint32_t>& out)
+	vector<uint32_t>& out
+)
 {
 	out.clear();
 	size_t i = 0, j = 0;
@@ -279,12 +360,28 @@ void CPhotoQueryEngine::Union(const vector<uint32_t>& a,
 			i++; j++;
 		}
 	}
-}
+} // Union
 
 /////////////////////////////////////////////////////////////////////////////
-// Evaluate a query
+// Query
+//
+// Evaluates a full query string using OR and AND semantics.
+//
+// Steps:
+//   1. Split query into OR‑groups
+//   2. For each group:
+//        a. Tokenize into AND‑tokens
+//        b. Start with first token’s posting list
+//        c. Intersect with remaining tokens
+//   3. OR‑merge all group results
+//   4. Convert final image IDs into full paths
+//
+// Returns true if the query was processed (even if no results).
 /////////////////////////////////////////////////////////////////////////////
-bool CPhotoQueryEngine::Query(const CString& query, vector<CString>& outResults)
+bool CPhotoQueryEngine::Query
+(
+	const CString& query, vector<CString>& outResults
+)
 {
 	outResults.clear();
 
@@ -351,4 +448,6 @@ bool CPhotoQueryEngine::Query(const CString& query, vector<CString>& outResults)
 	}
 
 	return true;
-}
+} // Query
+
+/////////////////////////////////////////////////////////////////////////////

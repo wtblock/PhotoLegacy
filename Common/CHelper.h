@@ -1,5 +1,5 @@
-/////////////////////////////////////////////////////////////////////////////
-// Copyright � by W. T. Block, all rights reserved
+﻿/////////////////////////////////////////////////////////////////////////////
+// Copyright © by W. T. Block, all rights reserved
 /////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include <type_traits>
@@ -1218,10 +1218,10 @@ public:
 	static void ReplaceCurlyQuotes(CString& text)
 	{
 		// UTF-8 curly quotes encoded as hex sequences
-		const CString openCurlyQuote = L"\xE2\x80\x9C";  // �
-		const CString closeCurlyQuote = L"\xE2\x80\x9D"; // �
-		const CString openCurlySingleQuote = L"\xE2\x80\x98"; // �
-		const CString closeCurlySingleQuote = L"\xE2\x80\x99"; // �
+		const CString openCurlyQuote = L"\xE2\x80\x9C";  // “
+		const CString closeCurlyQuote = L"\xE2\x80\x9D"; // ”
+		const CString openCurlySingleQuote = L"\xE2\x80\x98"; // ‘
+		const CString closeCurlySingleQuote = L"\xE2\x80\x99"; // ’
 
 		// Straight quotes
 		const CString straightDoubleQuote = L"\"";
@@ -1745,7 +1745,21 @@ public:
 	}
 
 	/////////////////////////////////////////////////////////////////////////////
-	// convert clunky MFC array to modern vector
+	// ToVector
+	//
+	// Converts an MFC CArray<T,T> into a modern std::vector<T>.
+	//
+	// Purpose:
+	//   • Modernize legacy code that still uses CArray
+	//   • Improve debugger visibility (vector shows contents directly)
+	//   • Enable range‑based for loops and STL algorithms
+	//   • Provide safe, value‑based semantics instead of raw pointer storage
+	//
+	// Notes:
+	//   • Performs a shallow copy of each element
+	//   • Preserves order
+	//   • Reserves capacity up front for efficiency
+	/////////////////////////////////////////////////////////////////////////////
 	template<typename T>
 	static std::vector<T> ToVector(const CArray<T, T>& arr)
 	{
@@ -1759,24 +1773,146 @@ public:
 	}
 
 	/////////////////////////////////////////////////////////////////////////////
-	// --- Path Helpers ---
+	// GetRootFolder
+	//
+	// Returns the application's current working directory, normalized to always
+	// end with a trailing backslash. Used by ToRelative() and ToAbsolute() to
+	// compute portable paths for image indexing.
+	//
+	// Example:
+	//   C:\Photos\Family\  (always ends with '\')
+	/////////////////////////////////////////////////////////////////////////////
 	static CString GetRootFolder();
+
+	/////////////////////////////////////////////////////////////////////////////
+	// NormalizeSlashes
+	//
+	// Converts all forward slashes ('/') to backslashes ('\') and removes
+	// duplicate slashes. Ensures consistent Windows‑style path formatting.
+	//
+	// Example:
+	//   "C:/Photos//Family" → "C:\Photos\Family"
+	/////////////////////////////////////////////////////////////////////////////
 	static CString NormalizeSlashes(const CString& path);
+
+	/////////////////////////////////////////////////////////////////////////////
+	// ToRelative
+	//
+	// Converts an absolute path into a portable relative path based on the
+	// application's root folder.
+	//
+	// Example:
+	//   Root: "C:\Photos\"
+	//   Abs:  "C:\Photos\Family\IMG_0001.jpg"
+	//   Rel:  ".\Family\IMG_0001.jpg"
+	//
+	// Used heavily by PhotoIndexBuilder to ensure indexes are portable across
+	// machines and drive letters.
+	/////////////////////////////////////////////////////////////////////////////
 	static CString ToRelative(const CString& absPath);
+
+
+	/////////////////////////////////////////////////////////////////////////////
+	// ToAbsolute
+	//
+	// Converts a relative path (".\Family\IMG_0001.jpg") back into an absolute
+	// path using the application's root folder.
+	//
+	// If the path is already absolute, it is returned unchanged.
+	/////////////////////////////////////////////////////////////////////////////
 	static CString ToAbsolute(const CString& relPath);
+
+	/////////////////////////////////////////////////////////////////////////////
+	// PathExists
+	//
+	// Returns TRUE if the given file or folder exists on disk.
+	// Wraps ::GetFileAttributes() with safe error handling.
+	/////////////////////////////////////////////////////////////////////////////
 	static BOOL PathExists(const CString& path);
 
-	// --- File Metadata ---
-	static BOOL GetFileTimestampAndSize(const CString& path, uint64_t& timestamp, uint64_t& size);
+	/////////////////////////////////////////////////////////////////////////////
+	// GetFileTimestampAndSize
+	//
+	// Retrieves the file's last‑write timestamp (as a 64‑bit FILETIME) and
+	// the file size (also 64‑bit).
+	//
+	// Purpose:
+	//   • Detect modified images in PhotoIndexBuilder::UpdateIndex()
+	//   • Support incremental index updates without full rebuilds
+	//
+	// Returns TRUE on success, FALSE if the file cannot be accessed.
+	/////////////////////////////////////////////////////////////////////////////
+	static BOOL GetFileTimestampAndSize
+	(
+		const CString& path,
+		uint64_t& timestamp,
+		uint64_t& size
+	);
 
-	// --- Tokenization ---
+	/////////////////////////////////////////////////////////////////////////////
+	// Tokenize
+	//
+	// Splits a comment string into individual tokens (words).
+	// Handles Unicode whitespace, punctuation, and multi‑language input.
+	//
+	// Used by:
+	//   • PhotoIndexBuilder
+	//   • PhotoIndexRebuildSession
+	//   • QueryPhotoIndex
+	//
+	// Produces clean, searchable tokens for inverted index construction.
+	/////////////////////////////////////////////////////////////////////////////
 	static void Tokenize(const CString& comment, std::vector<CString>& tokens);
+
+	/////////////////////////////////////////////////////////////////////////////
+	// NormalizeToken
+	//
+	// Cleans up a single token by:
+	//   • Lowercasing
+	//   • Removing punctuation
+	//   • Normalizing apostrophes
+	//   • Removing zero‑width characters
+	//
+	// Ensures consistent search behavior across languages and input sources.
+	/////////////////////////////////////////////////////////////////////////////
 	static void NormalizeToken(CString& token);
+
+	/////////////////////////////////////////////////////////////////////////////
+	// StripPunctuation
+	//
+	// Removes leading/trailing punctuation from a string while preserving
+	// internal alphanumeric content.
+	//
+	// Example:
+	//   "hello," → "hello"
+	//   "(family)" → "family"
+	//   "O'Connor" → "O'Connor"   (apostrophes preserved)
+	/////////////////////////////////////////////////////////////////////////////
 	static CString StripPunctuation(const CString& s);
 
 	/////////////////////////////////////////////////////////////////////////////
-	// read the XP comment (tab 0x9C9C) from an image
+	// GetXPComment
+	//
+	// Reads the XPComment EXIF tag (0x9C9C) from a GDI+ Image object.
+	// XPComment is stored as UTF‑16LE and may contain multi‑language text.
+	//
+	// Returns:
+	//   • Cleaned UTF‑16 CString
+	//   • Empty string if tag is missing or unreadable
+	//
+	// Used by PhotoIndexBuilder and PhotoIndexRebuildSession to extract
+	// searchable metadata from images.
+	/////////////////////////////////////////////////////////////////////////////
 	static CString GetXPComment(Gdiplus::Image* pImage);
+
+	/////////////////////////////////////////////////////////////////////////////
+	// GetXPCommentFromFile
+	//
+	// Convenience wrapper that loads an image from disk and extracts its
+	// XPComment tag using GetXPComment().
+	//
+	// Returns empty string if the image cannot be loaded or the tag is missing.
+	/////////////////////////////////////////////////////////////////////////////
 	static CString GetXPCommentFromFile(const CString& absPath);
 
 	/////////////////////////////////////////////////////////////////////////////

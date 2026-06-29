@@ -333,13 +333,38 @@ CString CHelper::EndDate(CString csLine)
 }
 
 /////////////////////////////////////////////////////////////////////////////
+// GetRootFolder
+//
+// Returns the application's current working directory as a CString.
+//
+// Notes:
+//   • Unlike earlier versions of this helper, this function no longer
+//     forces a trailing backslash. The caller (ToRelative / ToAbsolute)
+//     handles that normalization.
+//   • The working directory is the anchor for all relative path
+//     conversions used by PhotoIndexBuilder and PhotoIndexRebuildSession.
+//
+// Example:
+//   "C:\Photos\Family"
+/////////////////////////////////////////////////////////////////////////////
 CString CHelper::GetRootFolder()
 {
 	CString root = GetCurrentDirectory();
-
 	return root;
 }
 
+/////////////////////////////////////////////////////////////////////////////
+// NormalizeSlashes
+//
+// Converts all forward slashes ('/') to backslashes ('\') and collapses
+// duplicate slashes.
+//
+// Purpose:
+//   • Ensures consistent Windows-style path formatting
+//   • Prevents subtle bugs in path comparisons and prefix matching
+//
+// Example:
+//   "C:/Photos//Family" → "C:\Photos\Family"
 /////////////////////////////////////////////////////////////////////////////
 CString CHelper::NormalizeSlashes(const CString& path)
 {
@@ -350,39 +375,78 @@ CString CHelper::NormalizeSlashes(const CString& path)
 }
 
 /////////////////////////////////////////////////////////////////////////////
+// ToRelative
+//
+// Converts an absolute path into a portable relative path based on the
+// application's current working directory.
+//
+// Behavior:
+//   • Normalizes slashes
+//   • If the absolute path begins with the working directory prefix,
+//     returns ".\..." form
+//   • Otherwise returns the normalized absolute path unchanged
+//
+// Example:
+//   Root: "C:\Photos\"
+//   Abs:  "C:\Photos\Family\IMG_0001.jpg"
+//   Rel:  ".\Family\IMG_0001.jpg"
+//
+// Used by:
+//   • PhotoIndexBuilder
+//   • PhotoIndexRebuildSession
+//   • UpdateIndex (for ID-stable updates)
+/////////////////////////////////////////////////////////////////////////////
 CString CHelper::ToRelative(const CString& absPath)
 {
 	CString root = GetCurrentDirectory();      // always ends with "\"
 	CString normAbs = NormalizeSlashes(absPath);
 
-	// If the absolute path begins with the root, convert to .\ form
 	if (normAbs.Left(root.GetLength()).CompareNoCase(root) == 0)
 		return L".\\" + normAbs.Mid(root.GetLength());
 
-	// Otherwise return the normalized absolute path unchanged
 	return normAbs;
 }
 
+/////////////////////////////////////////////////////////////////////////////
+// ToAbsolute
+//
+// Converts a relative path (".\Family\IMG_0001.jpg") back into an absolute
+// path using the application's working directory.
+//
+// Behavior:
+//   • ".\..." → root + remainder
+//   • "C:\..." → returned unchanged
+//   • "\\server\share" → returned unchanged
+//   • Anything else → treated as relative to root
+//
+// Used by:
+//   • PhotoIndexBuilder::SaveBinaryIndex
+//   • PhotoIndexRebuildSession::ProcessImage
 /////////////////////////////////////////////////////////////////////////////
 CString CHelper::ToAbsolute(const CString& relPath)
 {
 	CString norm = NormalizeSlashes(relPath);
 
-	// If it begins with .\ then prepend the root folder
 	if (norm.Left(2) == L".\\")
 		return GetCurrentDirectory() + norm.Mid(2);
 
-	// If it already looks absolute (C:\ or \\server\share), return as-is
 	if (norm.GetLength() > 1 && norm[1] == L':')
 		return norm;
 
 	if (norm.Left(2) == L"\\\\")
 		return norm;
 
-	// Otherwise treat it as relative to the root
 	return GetCurrentDirectory() + norm;
 }
 
+/////////////////////////////////////////////////////////////////////////////
+// PathExists
+//
+// Returns TRUE if the given file or directory exists.
+//
+// Wraps GetFileAttributes() and checks for INVALID_FILE_ATTRIBUTES.
+//
+// Used throughout Legacy code to validate image paths before loading.
 /////////////////////////////////////////////////////////////////////////////
 BOOL CHelper::PathExists(const CString& path)
 {
@@ -390,6 +454,18 @@ BOOL CHelper::PathExists(const CString& path)
 	return (attr != INVALID_FILE_ATTRIBUTES);
 }
 
+/////////////////////////////////////////////////////////////////////////////
+// GetFileTimestampAndSize
+//
+// Retrieves:
+//   • last-write timestamp (FILETIME → uint64_t)
+//   • file size (DWORD low/high → uint64_t)
+//
+// Purpose:
+//   • Detect modified images in UpdateIndex()
+//   • Support incremental index updates without full rebuilds
+//
+// Returns TRUE on success, FALSE if the file cannot be accessed.
 /////////////////////////////////////////////////////////////////////////////
 BOOL CHelper::GetFileTimestampAndSize
 (
@@ -416,6 +492,18 @@ BOOL CHelper::GetFileTimestampAndSize
 }
 
 /////////////////////////////////////////////////////////////////////////////
+// StripPunctuation
+//
+// Removes all punctuation characters except spaces and alphanumerics.
+// Internal apostrophes are NOT preserved here — this is a simple cleaner.
+//
+// Used by NormalizeComment() in CPhotoIndexRebuildSession before tokenizing.
+//
+// Example:
+//   "hello," → "hello"
+//   "(family)" → "family"
+//   "O'Connor" → "OConnor"   (apostrophe removed)
+/////////////////////////////////////////////////////////////////////////////
 CString CHelper::StripPunctuation(const CString& s)
 {
 	CString out;
@@ -429,6 +517,25 @@ CString CHelper::StripPunctuation(const CString& s)
 }
 
 /////////////////////////////////////////////////////////////////////////////
+// NormalizeToken
+//
+// Performs detailed cleanup on a single token:
+//
+//   1) Lowercase + trim
+//   2) Remove possessive endings:
+//        "block's" → "block"
+//        "grimes'" → "grimes"
+//   3) Remove leading apostrophes:
+//        "'bob" → "bob"
+//   4) Strip leading/trailing punctuation while preserving internal
+//      apostrophes (O'Connor → O'Connor)
+//
+// This produces clean, stable tokens for inverted index construction.
+//
+// Used by:
+//   • PhotoIndexBuilder
+//   • PhotoIndexRebuildSession
+/////////////////////////////////////////////////////////////////////////////
 void CHelper::NormalizeToken(CString& s)
 {
 	s.MakeLower();
@@ -438,52 +545,60 @@ void CHelper::NormalizeToken(CString& s)
 	if (len == 0)
 		return;
 
-	// 1) Possessive handling: trailing 's or trailing '
-	len = s.GetLength();
+	// Possessive handling
 	if (len >= 2 && s[len - 2] == L'\'' && s[len - 1] == L's')
-	{
-		s = s.Left(len - 2);          // block's → block
-	}
+		s = s.Left(len - 2);
 	else if (len >= 1 && s[len - 1] == L'\'')
-	{
-		s = s.Left(len - 1);          // grimes' → grimes
-	}
+		s = s.Left(len - 1);
 
-	// 2) Leading apostrophe (nickname quotes): 'bob' → bob
-	len = s.GetLength();
-	if (len >= 1 && s[0] == L'\'')
-	{
+	// Leading apostrophe
+	if (!s.IsEmpty() && s[0] == L'\'')
 		s = s.Mid(1);
-	}
 
-	// 3) Strip other leading/trailing punctuation, but keep internal apostrophes
+	// Strip leading punctuation
 	while (!s.IsEmpty())
 	{
 		WCHAR c = s[0];
 		if (iswalnum(c) || c == L'\'')
 			break;
-		s.Delete(0);                  // drop leading .,,"() etc.
+		s.Delete(0);
 	}
 
+	// Strip trailing punctuation
 	while (!s.IsEmpty())
 	{
 		int last = s.GetLength() - 1;
 		WCHAR c = s[last];
 		if (iswalnum(c) || c == L'\'')
 			break;
-		s.Delete(last);               // drop trailing .,,"() etc.
+		s.Delete(last);
 	}
 
 	s.Trim();
 }
 
 /////////////////////////////////////////////////////////////////////////////
+// Tokenize
+//
+// Splits a comment string into tokens using a fixed delimiter set:
+//   " -,.;:"
+//
+// Behavior:
+//   • Lowercases input
+//   • Splits using CString::Tokenize
+//   • Trims each token
+//   • Skips empty tokens
+//
+// Used by:
+//   • PhotoIndexBuilder
+//   • PhotoIndexRebuildSession
+//   • QueryPhotoIndex
+/////////////////////////////////////////////////////////////////////////////
 void CHelper::Tokenize(const CString& comment, std::vector<CString>& tokens)
 {
 	CString clean = comment;
 	clean.MakeLower();
 
-	// space, hyphen, period, semicolon, and colon are separators
 	const CString csDelim = _T(" -,.;:");
 
 	int nStart = 0;
@@ -500,7 +615,22 @@ void CHelper::Tokenize(const CString& comment, std::vector<CString>& tokens)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-// read the XP comment (tab 0x9C9C) from an image
+// GetXPComment
+//
+// Reads the EXIF XPComment tag (0x9C9C) from a GDI+ Image.
+//
+// XPComment is stored as UTF‑16LE and may contain multi‑language text.
+// This function extracts the raw WCHAR buffer and returns it as a CString.
+//
+// Returns empty string if:
+//   • The tag is missing
+//   • The image has no metadata
+//   • The tag cannot be read
+//
+// Used by:
+//   • PhotoIndexBuilder
+//   • PhotoIndexRebuildSession
+/////////////////////////////////////////////////////////////////////////////
 CString CHelper::GetXPComment(Gdiplus::Image* pImage)
 {
 	if (!pImage)
@@ -525,6 +655,16 @@ CString CHelper::GetXPComment(Gdiplus::Image* pImage)
 	return CString(pwsz, wcharCount);
 }
 
+/////////////////////////////////////////////////////////////////////////////
+// GetXPCommentFromFile
+//
+// Convenience wrapper:
+//   • Loads the image from disk using LoadImageFromFile()
+//   • Extracts XPComment using GetXPComment()
+//
+// Returns empty string if:
+//   • The file cannot be loaded
+//   • The XPComment tag is missing
 /////////////////////////////////////////////////////////////////////////////
 CString CHelper::GetXPCommentFromFile(const CString& absPath)
 {

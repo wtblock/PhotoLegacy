@@ -1,5 +1,5 @@
-/////////////////////////////////////////////////////////////////////////////
-// Copyright � by W. T. Block, all rights reserved
+﻿/////////////////////////////////////////////////////////////////////////////
+// Copyright © by W. T. Block, all rights reserved
 /////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include "ATLComTime.h"
@@ -9,12 +9,33 @@
 using namespace std;
 
 /////////////////////////////////////////////////////////////////////////////
-// this class creates a fast look up of the mime type and class ID as 
-// defined by GDI+ for common file extensions
+// CDate
+//
+// Utility class for parsing, normalizing, validating, and formatting dates
+// used in photo metadata (EXIF DateTimeOriginal, XPComment, etc.).
+//
+// Supports the canonical EXIF format:
+//     "YYYY:MM:DD HH:MM:SS"
+//
+// Stores each component (year, month, day, hour, minute, second) separately,
+// provides COleDateTime conversion, and exposes property-style accessors.
+//
+// Also includes:
+//   • Month-name lookup ("jan" → 1, "feb" → 2, …)
+//   • Graceful handling of malformed date strings
+//   • Validation via COleDateTime::GetStatus()
+//   • Preservation of original input string
+/////////////////////////////////////////////////////////////////////////////
 class CDate
 {
 	// protected definition
 protected:
+	/////////////////////////////////////////////////////////////////////////////
+	// MONTH_LOOKUP
+	//
+	// Simple struct used by m_MonthLookup to map month-name prefixes
+	// ("jan", "feb", "mar") to numeric month values (1..12).
+	/////////////////////////////////////////////////////////////////////////////
 	typedef struct tagMonthLookup
 	{
 		CString m_csMonth;
@@ -22,6 +43,15 @@ protected:
 
 	} MONTH_LOOKUP;
 
+	/////////////////////////////////////////////////////////////////////////////
+	// TOKEN_NAME
+	//
+	// Enumeration used when parsing EXIF-style date strings into
+	// individual components (year, month, day, hour, minute, second).
+	//
+	// The order matches the EXIF format exactly:
+	//     YYYY : MM : DD   HH : MM : SS
+	/////////////////////////////////////////////////////////////////////////////
 	typedef enum
 	{
 		tnYear = 0,
@@ -32,18 +62,30 @@ protected:
 		tnSecond = tnMinute + 1,
 	} TOKEN_NAME;
 
-	// protected data
+// protected data
 protected:
-	// date formatted as a string
+	/////////////////////////////////////////////////////////////////////////////
+	// m_csDate
+	//
+	// Cached formatted date string ("YYYY:MM:DD HH:MM:SS") produced by GetDate().
+	/////////////////////////////////////////////////////////////////////////////
 	CString m_csDate;
 
-	// The date and time when the original image data was generated.
-	// For a digital still camera, this is the date and time the picture 
-	// was taken or recorded. The format is "YYYY:MM:DD HH:MM:SS" with time 
-	// shown in 24-hour format, and the date and time separated by one blank 
-	// character (hex 20).
+	/////////////////////////////////////////////////////////////////////////////
+	// m_csDateTaken
+	//
+	// Raw date string from metadata (EXIF DateTimeOriginal or XPComment).
+	// Stored exactly as provided before parsing.
+	/////////////////////////////////////////////////////////////////////////////
 	CString m_csDateTaken;
 
+	/////////////////////////////////////////////////////////////////////////////
+	// m_nYear, m_nMonth, m_nDay, m_nHour, m_nMinute, m_nSecond
+	//
+	// Individual date/time components extracted from m_csDateTaken.
+	// Stored as integers for easy validation and manipulation.
+	/////////////////////////////////////////////////////////////////////////////
+	
 	// 4 digit year
 	int m_nYear;
 
@@ -62,15 +104,31 @@ protected:
 	// second of the minute (0..59)
 	int m_nSecond;
 
-	// boolean indicator that all is well
+	/////////////////////////////////////////////////////////////////////////////
+	// m_bOkay
+	//
+	// Indicates whether the stored date/time components form a valid date.
+	// Determined using COleDateTime::GetStatus().
+	/////////////////////////////////////////////////////////////////////////////
 	bool m_bOkay;
 
-	// rapid month lookup
+	/////////////////////////////////////////////////////////////////////////////
+	// m_MonthLookup
+	//
+	// Lookup table mapping month-name prefixes ("jan", "feb", "mar") to
+	// numeric month values (1..12). Used by GetMonthOfTheYear().
+	/////////////////////////////////////////////////////////////////////////////
 	CKeyedCollection<CString, int> m_MonthLookup;
 
-	// public properties
+// public properties
 public:
-	// date and time formatted as a string
+	/////////////////////////////////////////////////////////////////////////////
+	// GetDate
+	//
+	// Returns the formatted date/time string ("YYYY:MM:DD HH:MM:SS").
+	// Uses COleDateTime for validation and formatting.
+	// Updates m_csDate when valid.
+	/////////////////////////////////////////////////////////////////////////////
 	inline CString GetDate()
 	{
 		CString value;
@@ -87,7 +145,12 @@ public:
 
 		return m_csDate;
 	}
-	// date and time formatted as a string
+	/////////////////////////////////////////////////////////////////////////////
+	// SetDate
+	//
+	// Parses a formatted date/time string using COleDateTime::ParseDateTime.
+	// If valid, updates all components and marks the date as Okay.
+	/////////////////////////////////////////////////////////////////////////////
 	inline void SetDate( CString value )
 	{
 		COleDateTime oDT;
@@ -203,7 +266,12 @@ public:
 	__declspec( property( get = GetOkay, put = SetOkay ) )
 		bool Okay;
 
-	// gets the date and time from the properties
+	/////////////////////////////////////////////////////////////////////////////
+	// GetDateAndTime
+	//
+	// Constructs a COleDateTime from the stored components.
+	// Updates Okay based on COleDateTime::GetStatus().
+	/////////////////////////////////////////////////////////////////////////////
 	inline COleDateTime GetDateAndTime()
 	{
 		COleDateTime value( Year, Month, Day, Hour, Minute, Second );
@@ -211,7 +279,12 @@ public:
 		Okay = COleDateTime::DateTimeStatus::valid == eStatus;
 		return value;
 	}
-	// sets the date and time if valid
+	/////////////////////////////////////////////////////////////////////////////
+	// SetDateAndTime
+	//
+	// Assigns all components from a COleDateTime if it is valid.
+	// Marks the date as Okay.
+	/////////////////////////////////////////////////////////////////////////////
 	inline void SetDateAndTime( COleDateTime value )
 	{
 		COleDateTime::DateTimeStatus eStatus = value.GetStatus();
@@ -231,6 +304,9 @@ public:
 	__declspec( property( get = GetDateAndTime, put = SetDateAndTime ) )
 		COleDateTime DateAndTime;
 
+	/////////////////////////////////////////////////////////////////////////////
+	// GetDateTaken
+	// 
 	// The date and time when the original image data was generated.
 	// For a digital still camera, this is the date and time the picture 
 	// was taken or recorded. The format is "YYYY:MM:DD HH:MM:SS" with time 
@@ -240,6 +316,19 @@ public:
 	{
 		return m_csDateTaken;
 	}
+	/////////////////////////////////////////////////////////////////////////////
+	// SetDateTaken
+	//
+	// Parses EXIF-style date strings:
+	//
+	//     "YYYY:MM:DD HH:MM:SS"
+	//
+	// Tokenizes using delimiters ":" and " ".
+	// Ensures exactly six tokens (pads with "00" if needed).
+	// Converts tokens to integers and assigns Year..Second.
+	//
+	// Updates Okay based on COleDateTime validation.
+	/////////////////////////////////////////////////////////////////////////////
 	void SetDateTaken( CString csDate )
 	{
 		// reset the m_Date to undefined state
@@ -334,18 +423,27 @@ public:
 		value = Okay;
 
 	} 
+	/////////////////////////////////////////////////////////////////////////////
 	// The date and time when the original image data was generated.
 	// For a digital still camera, this is the date and time the picture 
 	// was taken or recorded. The format is "YYYY:MM:DD HH:MM:SS" with time 
 	// shown in 24-hour format, and the date and time separated by one blank 
 	// character (hex 20).
+	/////////////////////////////////////////////////////////////////////////////
 	__declspec( property( get = GetDateTaken, put = SetDateTaken ) )
 		CString DateTaken;
 
 // public methods
 public:
-	// return the month of the year (1..12) given the month's name
-	// or return 0 if one is not found
+	/////////////////////////////////////////////////////////////////////////////
+	// GetMonthOfTheYear
+	//
+	// Returns the numeric month (1..12) given a month name such as
+	// "January", "Feb", "mar", etc.
+	//
+	// Uses only the first three characters (lowercased) as the key.
+	// Returns 0 if the month name is not recognized.
+	/////////////////////////////////////////////////////////////////////////////
 	int GetMonthOfTheYear( CString month )
 	{
 		int value = 0;
@@ -363,7 +461,14 @@ public:
 		return value;
 	}
 
-	// constructor
+	/////////////////////////////////////////////////////////////////////////////
+	// CDate constructor
+	//
+	// Initializes all date/time components to an undefined state and builds
+	// the month-name lookup table ("jan" → 1, ..., "dec" → 12).
+	//
+	// Sets Okay = false until a valid date is parsed or assigned.
+	/////////////////////////////////////////////////////////////////////////////
 	CDate()
 	{
 		Year = -1;

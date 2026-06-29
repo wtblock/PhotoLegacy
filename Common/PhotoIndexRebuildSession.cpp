@@ -15,16 +15,51 @@ using namespace Gdiplus;
 // ------------------------------------------------------------
 
 /////////////////////////////////////////////////////////////////////////////
+// CPhotoIndexRebuildSession
+//
+// Drives a full or incremental rebuild of the photo index by walking the
+// folder tree, discovering all labeled images, extracting metadata, and
+// producing:
+//
+//   • imageTable      → vector<ImageEntry>
+//   • invertedIndex   → map<wstring, set<uint32_t>>
+//
+// The rebuild is performed incrementally via Step(), allowing UI progress
+// bars in PhotoPrinter and PhotoExplorer.
+//
+// This class is used by:
+//   • BuildPhotoIndex (full rebuild)
+//   • PhotoPrinter (incremental rebuild/update)
+//   • PhotoExplorer (index refresh)
+//
+// The session is stateful and processes one image per Step().
+/////////////////////////////////////////////////////////////////////////////
 CPhotoIndexRebuildSession::CPhotoIndexRebuildSession()
 	: m_currentIndex(0)
 {
 }
 
 /////////////////////////////////////////////////////////////////////////////
+// Destructor — no special cleanup required
+/////////////////////////////////////////////////////////////////////////////
 CPhotoIndexRebuildSession::~CPhotoIndexRebuildSession()
 {
 }
 
+/////////////////////////////////////////////////////////////////////////////
+// Initialize
+//
+// Prepares the rebuild session by:
+//
+//   1. Clearing previous results
+//   2. Discovering all labeled folders under baseFolder
+//   3. Discovering all labeled images (*.jpg) inside those folders
+//   4. Pre‑allocating the image table
+//
+// On success, the session is ready for Step() calls.
+// On failure, errorMessage is populated.
+//
+// Returns true if initialization succeeded.
 /////////////////////////////////////////////////////////////////////////////
 bool CPhotoIndexRebuildSession::Initialize(const CString& baseFolder)
 {
@@ -60,6 +95,22 @@ bool CPhotoIndexRebuildSession::Initialize(const CString& baseFolder)
 }
 
 /////////////////////////////////////////////////////////////////////////////
+// Step
+//
+// Processes exactly ONE image from m_allImages:
+//
+//   • Loads the image
+//   • Extracts XPComment metadata
+//   • Normalizes comment text
+//   • Tokenizes comment into search tokens
+//   • Inserts tokens into temporary inverted index
+//   • Appends ImageEntry to imageTable
+//
+// When the final image is processed, Step() finalizes the inverted index
+// by moving m_tempInverted → m_result.invertedIndex.
+//
+// Returns true even on non‑fatal image errors (bad JPG, missing metadata).
+/////////////////////////////////////////////////////////////////////////////
 bool CPhotoIndexRebuildSession::Step()
 {
 	if (IsDone())
@@ -85,11 +136,31 @@ bool CPhotoIndexRebuildSession::Step()
 }
 
 /////////////////////////////////////////////////////////////////////////////
+// IsDone
+//
+// Returns true when all images have been processed.
+// Used by UI loops:
+//
+//     while (!session.IsDone())
+//         session.Step();
+//
+/////////////////////////////////////////////////////////////////////////////
 bool CPhotoIndexRebuildSession::IsDone() const
 {
 	return m_currentIndex >= m_allImages.size();
 }
 
+/////////////////////////////////////////////////////////////////////////////
+// GetResult
+//
+// Returns the final rebuild result:
+//
+//   • success
+//   • errorMessage
+//   • imageTable
+//   • invertedIndex
+//
+// Valid only after IsDone() == true.
 /////////////////////////////////////////////////////////////////////////////
 const CPhotoIndexRebuildSession::Result& 
 CPhotoIndexRebuildSession::GetResult() const
@@ -98,11 +169,21 @@ CPhotoIndexRebuildSession::GetResult() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
+// GetProcessedCount
+//
+// Returns number of images processed so far.
+// Used for progress bars.
+/////////////////////////////////////////////////////////////////////////////
 int CPhotoIndexRebuildSession::GetProcessedCount() const
 {
 	return static_cast<int>(m_currentIndex);
 }
 
+/////////////////////////////////////////////////////////////////////////////
+// GetTotalCount
+//
+// Returns total number of images discovered.
+// Used for progress bars and UI status.
 /////////////////////////////////////////////////////////////////////////////
 int CPhotoIndexRebuildSession::GetTotalCount() const
 {
@@ -110,18 +191,31 @@ int CPhotoIndexRebuildSession::GetTotalCount() const
 }
 
 /////////////////////////////////////////////////////////////////////////////
+// GetLastError
+//
+// Returns the most recent non‑fatal error encountered during Step().
+// Useful for logging or UI display.
+/////////////////////////////////////////////////////////////////////////////
 CString CPhotoIndexRebuildSession::GetLastError() const
 {
 	return m_result.errorMessage;
 }
 
-// ------------------------------------------------------------
-// Internal helpers
-// ------------------------------------------------------------
-
-// This should mirror your existing ListLabeledFolders logic,
-// but instead of writing to files, it populates an internal
-// collection of folders and then images.
+/////////////////////////////////////////////////////////////////////////////
+// DiscoverLabeledFolders
+//
+// Recursively walks the folder tree starting at baseFolder.
+//
+// For each directory:
+//   • If a "Labeled" subfolder exists, collect all *.jpg files inside it
+//   • Recurse into subdirectories
+//
+// Populates m_allImages with absolute paths.
+//
+// This mirrors the original ListLabeledFolders logic used by PhotoPrinter,
+// but stores results in memory instead of writing to disk.
+//
+// Returns true unless a filesystem error occurs.
 /////////////////////////////////////////////////////////////////////////////
 bool CPhotoIndexRebuildSession::DiscoverLabeledFolders(const CString& baseFolder)
 {
@@ -174,6 +268,12 @@ bool CPhotoIndexRebuildSession::DiscoverLabeledFolders(const CString& baseFolder
 }
 
 /////////////////////////////////////////////////////////////////////////////
+// DiscoverLabeledImages
+//
+// Validates that DiscoverLabeledFolders() found at least one image.
+//
+// Returns false if no labeled images exist.
+/////////////////////////////////////////////////////////////////////////////
 bool CPhotoIndexRebuildSession::DiscoverLabeledImages()
 {
 	// Nothing to do — m_allImages is already populated
@@ -190,6 +290,24 @@ bool CPhotoIndexRebuildSession::DiscoverLabeledImages()
 	return true;
 }
 
+/////////////////////////////////////////////////////////////////////////////
+// ProcessImage
+//
+// Processes a single image:
+//
+//   1. Load image via GDI+
+//   2. Extract XPComment metadata
+//   3. Normalize comment (lowercase, punctuation, whitespace)
+//   4. Tokenize comment into raw tokens
+//   5. Normalize each token (possessive handling, cleanup)
+//   6. Insert tokens into m_tempInverted[token].insert(imageID)
+//   7. Build ImageEntry (relative path, timestamp, size)
+//   8. Append ImageEntry to imageTable
+//
+// Non‑fatal errors (bad JPG, missing metadata) are logged but do not stop
+// the rebuild.
+//
+// Returns true on success, false on non‑fatal image load errors.
 /////////////////////////////////////////////////////////////////////////////
 bool CPhotoIndexRebuildSession::ProcessImage(const CString& absPath)
 {
@@ -244,8 +362,31 @@ bool CPhotoIndexRebuildSession::ProcessImage(const CString& absPath)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-CPhotoIndexBuilder::UpdateResult
-CPhotoIndexBuilder::UpdateIndex
+// UpdateIndex  (CPhotoIndexBuilder)
+//
+// Performs an incremental index update:
+//
+//   1. Load existing index (if present)
+//   2. Discover all labeled images
+//   3. Detect:
+//        • new images
+//        • modified images (timestamp or size changed)
+//        • deleted images
+//   4. Preserve existing image IDs (ID‑stable update)
+//   5. Remove postings for deleted/modified images
+//   6. Re‑tokenize modified images and re‑insert postings
+//   7. Append new images with new IDs
+//   8. Save updated index
+//
+// Returns UpdateResult containing lists of:
+//   • newImages
+//   • modifiedImages
+//   • deletedImages
+//   • success/errorMessage
+//
+// This is the engine behind PhotoPrinter’s “Update Index” feature.
+/////////////////////////////////////////////////////////////////////////////
+CPhotoIndexBuilder::UpdateResult CPhotoIndexBuilder::UpdateIndex
 (
 	const CString& baseFolder, const CString& indexPath
 )
