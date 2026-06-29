@@ -4,9 +4,6 @@
 #pragma once
 
 #include "resource.h"
-#include "PhotoIndexTypes.h"
-#include "CHelper.h"
-#include "PhotoIndexBuilder.h"
 #include <gdiplus.h>
 
 // we need to link to the GDI+ library
