@@ -3,6 +3,7 @@
 /////////////////////////////////////////////////////////////////////////////
 #include "pch.h"
 #include "framework.h"
+#include "CHelper.h"
 #include "QueryPhotoIndex.h"
 #include "PhotoIndexRebuildSession.h"
 #include <set>
@@ -13,13 +14,49 @@
 #endif
 
 /////////////////////////////////////////////////////////////////////////////
+// QueryPhotoIndex.cpp
+//
+// A lightweight console application that loads the binary photo index
+// (image table + inverted index) and executes text queries against it.
+//
+// Architecture:
+//   • All indexing logic (tokenization, inverted index construction,
+//     metadata extraction, XPComment parsing, path normalization) is
+//     performed by the Common library.
+//   • QueryPhotoIndex simply loads the prebuilt index, evaluates queries,
+//     groups results by album/folder, and prints them to the console.
+//
+// Responsibilities:
+//   • Initialize MFC, COM, OLE, and GDI+
+//   • Load the binary index via CPhotoIndexBuilder::LoadBinaryIndex()
+//   • Parse command-line query text
+//   • Tokenize and normalize query terms
+//   • Perform AND/OR evaluation using the inverted index
+//   • Convert image IDs → absolute paths
+//   • Sort results
+//   • Group results by album/folder
+//   • Cache loaded GDI+ Image objects for display
+//   • Print results to console
+//
+// This file intentionally contains no indexing logic. All search,
+// tokenization, and metadata handling is delegated to the Common library.
+/////////////////////////////////////////////////////////////////////////////
+
+/////////////////////////////////////////////////////////////////////////////
 // The one and only application object
 CWinApp theApp;
 
 using namespace std;
 
 /////////////////////////////////////////////////////////////////////////////
-// initialize GDI+
+// InitGdiplus
+//
+// Starts the GDI+ subsystem and stores the startup token globally.
+// Required because QueryPhotoIndex loads images to group results by album
+// and to inspect metadata (dimensions, DPI, XPComment).
+//
+// Returns true if GDI+ initialized successfully.
+/////////////////////////////////////////////////////////////////////////////
 bool InitGdiplus()
 {
 	GdiplusStartupInput gdiplusStartupInput;
@@ -33,7 +70,16 @@ bool InitGdiplus()
 } // InitGdiplus
 
 /////////////////////////////////////////////////////////////////////////////
-// remove reference to GDI+
+// TerminateGdiplus
+//
+// Shuts down the GDI+ subsystem and clears the global token.
+//
+// Before shutting down GDI+, all cached GDI+ Image objects stored in
+// m_mapAlbums must be released. This prevents GDI+ from reporting leaks
+// or dangling handles.
+//
+// Safe to call even if initialization failed.
+/////////////////////////////////////////////////////////////////////////////
 void TerminateGdiplus()
 {
 	// remove gdi images from memory before shutting down gdi
@@ -45,7 +91,20 @@ void TerminateGdiplus()
 }// TerminateGdiplus
 
 /////////////////////////////////////////////////////////////////////////////
-// Load the binary index from disk
+// DumpIndex
+//
+// Diagnostic function that prints the entire loaded index to stdout.
+//
+// Output includes:
+//   • Number of images
+//   • Number of tokens
+//   • All image paths
+//   • All tokens and their posting lists (image IDs)
+//
+// If showPostings == true, the full posting list for each token is printed.
+//
+// Used for debugging and verifying the integrity of the binary index.
+/////////////////////////////////////////////////////////////////////////////
 void DumpIndex(bool showPostings)
 {
 	size_t nImages = m_loadedIndex.images.size();
@@ -82,10 +141,44 @@ void DumpIndex(bool showPostings)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-// cache the images within the labeled folders
-// cache the queried images using the new inverted index
-// cache the images within the labeled folders
-// cache the queried images using the new inverted index
+// CacheQueriedImages
+//
+// Evaluates the user’s query string (m_csQuery) against the loaded
+// inverted index (m_loadedIndex.invertedIndex) and populates:
+//
+//   • m_queryResults   → sorted list of absolute image paths
+//   • m_mapAlbums      → grouped images by album/folder
+//   • m_keyFolders     → sorted list of album names
+//   • m_nImages        → number of matched images
+//
+// Supports two query modes:
+//
+//   1. AND mode (default)
+//      All tokens must appear in the image’s metadata.
+//      Example: "mary beth" → images containing BOTH tokens.
+//
+//   2. OR mode (using '|')
+//      Any OR group may match.
+//      Example: "mary | liam" → union of images containing either token.
+//
+// Steps:
+//   • Detect OR operator
+//   • Tokenize and normalize each term
+//   • Perform AND/OR evaluation using std::set<uint32_t>
+//   • Convert image IDs → absolute paths
+//   • Sort results alphabetically
+//   • Group results by album/folder
+//   • Load GDI+ Image objects for each result (for display)
+//
+// Notes:
+//   • Inverted index now stores posting lists as std::set<uint32_t>
+//     instead of std::vector<uint32_t>.
+//   • This simplifies AND/OR logic and guarantees uniqueness.
+//   • Album grouping uses CHelper::GetFolder() and CHelper::GetDataName().
+//   • Cached images are stored in MAP_ALBUM for later display.
+//
+// If no results are found, a message box is displayed.
+/////////////////////////////////////////////////////////////////////////////
 void CacheQueriedImages()
 {
 	m_queryResults.clear();
@@ -107,7 +200,7 @@ void CacheQueriedImages()
 	// ===============================================================
 	if (hasOr)
 	{
-		// Split into OR groups
+		// Split query into OR groups: "mary | liam | katherine"
 		std::vector<CString> orGroups;
 		{
 			int start = 0;
@@ -195,6 +288,7 @@ void CacheQueriedImages()
 		// AND LOGIC (original behavior)
 		// ===============================================================
 
+		// Tokenize entire query and intersect posting lists
 		std::vector<CString> tokens;
 		CHelper::Tokenize(csQuery, tokens);
 
@@ -332,9 +426,46 @@ void CacheQueriedImages()
 } // CacheQueriedImages
 
 /////////////////////////////////////////////////////////////////////////////
-// a console application that can crawl through the file
-// system and build an index of the comments in JPG files
-// located in folders named 'Labeled'
+// _tmain
+//
+// Main entry point for the QueryPhotoIndex console application.
+//
+// Purpose:
+//   • Load the binary photo index (PhotoIndex.phix)
+//   • Evaluate a user‑supplied text query
+//   • Print matching image paths to the console
+//   • Support OR queries using the '|' operator
+//   • Support diagnostic modes (DUMP, POST)
+//   • Perform incremental index updates when needed
+//
+// Architecture:
+//   • All indexing logic (tokenization, inverted index construction,
+//     metadata extraction, XPComment parsing, path normalization) is
+//     performed by the Common library.
+//   • QueryPhotoIndex simply loads the index, evaluates queries, and
+//     prints results.
+//
+// Command Line Format:
+//     QueryPhotoIndex query [index_folder]
+//
+// Examples:
+//     QueryPhotoIndex "mary beth"
+//     QueryPhotoIndex "liam | katherine"
+//     QueryPhotoIndex "Houston Zoo"
+//     QueryPhotoIndex dump
+//     QueryPhotoIndex post
+//
+// Special Modes:
+//     dump → print index contents (no postings)
+//     post → print index contents + posting lists
+//
+// Notes:
+//   • If the index does not exist, a full rebuild is performed.
+//   • If the index exists, an incremental update is performed.
+//   • The working folder defaults to the current directory.
+//   • If the folder does not exist, a known fallback is used.
+//   • GDI+ is initialized because album grouping loads images.
+/////////////////////////////////////////////////////////////////////////////
 int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 {
 	int nRetCode = 0;
