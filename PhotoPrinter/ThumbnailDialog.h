@@ -1,8 +1,61 @@
-/////////////////////////////////////////////////////////////////////////////
-// Copyright � by W. T. Block, all rights reserved
+﻿/////////////////////////////////////////////////////////////////////////////
+// Copyright © by W. T. Block, all rights reserved
 /////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+/////////////////////////////////////////////////////////////////////////////
+// CThumbnailDialog
+//
+// Modal (but UI‑friendly) progress dialog originally designed for Photo
+// Explorer to show thumbnail‑generation progress. PhotoPrinter reuses this
+// dialog as a general progress indicator during long operations such as
+// caching labeled images, caching queried images, and building pages.
+//
+// Purpose:
+//   • Display progress for operations that may take several seconds or
+//     minutes, especially when processing thousands of images.
+//   • Provide both a graphical progress bar and a textual status line.
+//   • Allow the user to cancel the operation cleanly.
+//   • Keep the UI responsive by cooperating with ThreadHelp::UpdateUI().
+//
+// Why this class exists:
+//   Standard MFC progress dialogs (CProgressCtrl inside a dialog) do not
+//   provide cancellation, parent‑window positioning, or dynamic status text.
+//   PhotoPrinter requires a lightweight, reusable dialog that can be shown
+//   non‑modally and updated frequently during long loops.
+//
+// Responsibilities:
+//   • Create and position the dialog relative to the main window.
+//   • Display progress using a percentage bar and “X of Y Images” text.
+//   • Track cancellation state (Cancel property).
+//   • Allow the caller to update progress via CurrentImage and TotalImages.
+//   • Provide a fallback mechanism to locate the main window if the parent
+//     is not available (IdentifyAppMainWindowProc).
+//   • Maintain UI responsiveness by calling ThreadHelp::UpdateUI().
+//
+// Interaction with other components:
+//   • Used heavily by CPhotoPrinterDoc during:
+//       – CacheLabeledImages()
+//       – CacheQueriedImages()
+//       – CacheChronologicalImages()
+//   • The main frame’s Wait() method is often used alongside this dialog
+//     to keep the UI responsive.
+//   • The dialog is updated inside tight loops, so it must be lightweight
+//     and safe to call frequently.
+//
+// Wizard‑generated portions:
+//   • Base class (CDialogEx), DDX/DDV mapping, message map.
+//
+// Application‑specific additions:
+//   • Parent‑window discovery logic.
+//   • Dynamic progress text formatting.
+//   • Cancel flag and handler.
+//   • Integration with ThreadHelp for UI pumping.
+//   • Automatic initialization of progress range and status text.
+//
+// This dialog provides a simple, reliable progress indicator that enhances
+// the user experience during long-running operations in PhotoPrinter and
+// Photo Explorer.
 /////////////////////////////////////////////////////////////////////////////
 class CThumbnailDialog : public CDialogEx
 {

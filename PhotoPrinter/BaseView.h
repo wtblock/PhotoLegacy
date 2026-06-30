@@ -1,4 +1,4 @@
-/////////////////////////////////////////////////////////////////////////////
+﻿/////////////////////////////////////////////////////////////////////////////
 // Copyright (c) 2025 by W. T. Block, All Rights Reserved
 /////////////////////////////////////////////////////////////////////////////
 
@@ -8,6 +8,49 @@
 
 using namespace std;
 
+/////////////////////////////////////////////////////////////////////////////
+// CBaseView
+//
+// Base class for all multipage, device‑independent views in PhotoPrinter.
+//
+// Purpose:
+//   • Provide a unified rendering pipeline for screen, print preview,
+//     printer output, and image/PDF export.
+//   • Abstract away all device‑dependent details (mapping modes,
+//     scrollbars, zooming, page layout, DPI differences).
+//   • Provide consistent logical coordinate space measured in inches,
+//     independent of device resolution.
+//   • Handle scrolling, paging, zooming, and orientation (horizontal/vertical).
+//   • Provide reusable font creation utilities.
+//   • Provide double‑buffered drawing to eliminate flicker.
+//
+// Why this class exists:
+//   PhotoPrinter builds entire books — multi‑page documents with precise
+//   layout requirements. MFC’s default CScrollView is not sufficient for
+//   device‑independent rendering. CBaseView introduces a custom mapping
+//   mode (MM_ISOTROPIC) and a logical coordinate system based on inches,
+//   ensuring identical layout across:
+//
+//       • Screen display
+//       • Print preview
+//       • Printer output
+//       • PDF export
+//       • Image export
+//
+// Responsibilities:
+//   • Maintain logical view origin (TopOfView / LeftOfView)
+//   • Maintain zoom scale (Scale)
+//   • Maintain orientation (Horizontal)
+//   • Convert between logical units and inches
+//   • Manage scrollbars based on logical document size
+//   • Handle keyboard and mousewheel navigation
+//   • Handle zooming with Ctrl+MouseWheel
+//   • Keep mouse focus stable during zoom (TranslatePresentation)
+//   • Provide double‑buffered drawing (optional)
+//   • Provide unified rendering entry point: render()
+//
+// This class is intentionally generic. All document‑specific drawing is
+// performed by derived classes (e.g., PhotoPrinterView).
 /////////////////////////////////////////////////////////////////////////////
 class CBaseView : public CScrollView
 {

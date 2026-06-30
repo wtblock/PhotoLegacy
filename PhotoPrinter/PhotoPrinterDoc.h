@@ -1,4 +1,4 @@
-/////////////////////////////////////////////////////////////////////////////
+﻿/////////////////////////////////////////////////////////////////////////////
 // Copyright (c) 2025 by W. T. Block, All Rights Reserved
 /////////////////////////////////////////////////////////////////////////////
 #pragma once
@@ -16,6 +16,55 @@ using namespace Gdiplus;
 /////////////////////////////////////////////////////////////////////////////
 class CPhotoPrinterView;
 
+/////////////////////////////////////////////////////////////////////////////
+// CPhotoPrinterDoc
+//
+// Document class for PhotoPrinter. This is the central data model that
+// represents an entire multi‑page photo book, including:
+//
+//   • Loaded search index (image table + inverted index)
+//   • Queried or labeled images grouped into albums
+//   • Page objects containing image rectangles and layout information
+//   • Table of contents entries
+//   • Document metadata (title, subtitle, publisher, ISBN, copyright)
+//   • Export settings (folder, DPI, quality, selected pages)
+//   • Page geometry (margins, gutter, inside/outside margins)
+//   • Working folder and start/end folder range
+//
+// Purpose:
+//   PhotoPrinterView handles rendering, but CPhotoPrinterDoc is responsible
+//   for *building* the book: discovering albums, loading images, grouping
+//   them, laying them out into pages, and exposing all geometry and metadata
+//   needed for device‑independent rendering.
+//
+// Why this class exists:
+//   MFC’s CDocument provides no concept of pages, albums, margins, or
+//   multi‑page layout. PhotoPrinter requires a rich document model capable of:
+//
+//       • Loading and querying the photo index
+//       • Organizing images into albums
+//       • Generating page layouts (1‑image, 2‑image, 3‑image templates, etc.)
+//       • Computing margin rectangles based on even/odd pages
+//       • Supporting title page and multi‑page table of contents
+//       • Providing metadata for PDF export and high‑DPI rendering
+//
+// Responsibilities:
+//   • Load the binary search index (LoadedIndex)
+//   • Build album list from StartFolder → EndFolder
+//   • Cache labeled or queried images into MAP_ALBUM
+//   • Count images and compute total page count
+//   • Generate page objects (CPage) with assigned rectangles
+//   • Provide TOC entries (album → starting page)
+//   • Provide all page geometry in inches and logical units
+//   • Provide export settings and selected page numbers
+//   • Save and load .pp project files using XML
+//
+// Rendering:
+//   • CPhotoPrinterView calls GetCurrentPage(), MarginRectangle,
+//     HeightOfPage, WidthOfPage, and other geometry properties.
+//   • The document never draws anything itself; it only supplies data.
+//
+// This class is the backbone of PhotoPrinter’s book‑building pipeline.
 /////////////////////////////////////////////////////////////////////////////
 class CPhotoPrinterDoc : public CBaseDoc
 {

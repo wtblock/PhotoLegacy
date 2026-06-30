@@ -1,4 +1,4 @@
-/////////////////////////////////////////////////////////////////////////////
+﻿/////////////////////////////////////////////////////////////////////////////
 // Copyright (c) 2025 by W. T. Block, All Rights Reserved
 /////////////////////////////////////////////////////////////////////////////
 #include "pch.h"
@@ -27,6 +27,66 @@ BEGIN_MESSAGE_MAP(CPhotoPrinterApp, CWinAppEx)
 	// Standard print setup command
 	ON_COMMAND(ID_FILE_PRINT_SETUP, &CWinAppEx::OnFilePrintSetup)
 END_MESSAGE_MAP()
+
+/////////////////////////////////////////////////////////////////////////////
+// CPhotoPrinterApp Implementation
+//
+// This source file contains the full application‑level initialization and
+// shutdown logic for PhotoPrinter. As the global MFC application object,
+// CPhotoPrinterApp is responsible for preparing the entire runtime
+// environment before any documents or views are created.
+//
+// Major Responsibilities:
+//   • Initialize common controls, MFC, OLE, COM, and GDI+
+//   • Parse command‑line arguments (CCommandLine)
+//   • Establish the working folder used by PhotoPrinterDoc
+//   • Create and register the document/view/frame template
+//   • Create the main MDI frame window (CMainFrame)
+//   • Dispatch shell commands (open file, automation, etc.)
+//   • Manage application‑wide UI components (tooltips, context menus)
+//   • Provide idle‑time processing for progress dialogs
+//   • Shut down COM and GDI+ cleanly on exit
+//
+// Initialization Flow (InitInstance):
+//   1. Initialize common controls (required for modern UI).
+//   2. Allocate and parse command‑line data.
+//   3. Determine and set the working folder.
+//   4. Initialize MFC core (CWinAppEx::InitInstance).
+//   5. Initialize OLE and COM (AfxOleInit, CoInitializeEx).
+//   6. Initialize GDI+ (GdiplusStartup).
+//   7. Create splash/progress dialog during startup.
+//   8. Initialize context menu, keyboard, and tooltip managers.
+//   9. Register the document template connecting:
+//        • CPhotoPrinterDoc (document)
+//        • CChildFrame       (MDI child frame)
+//        • CPhotoPrinterView (view)
+//  10. Create the main MDI frame window.
+//  11. Process shell commands (open file, automation, etc.).
+//  12. Show and update the main window.
+//
+// Shutdown Flow (ExitInstance):
+//   • Terminate OLE
+//   • Uninitialize COM
+//   • Shut down GDI+
+//   • Delegate final cleanup to CWinAppEx
+//
+// Idle Processing (OnIdle):
+//   • Allows progress dialogs (ThumbnailDialog, splash screens, etc.)
+//     to remain responsive during long operations such as page building
+//     or image caching.
+//   • Transfers queued quit messages from background threads.
+//
+// File Open Handling:
+//   • Presents a file dialog for .pp project files.
+//   • Opens the selected document using the registered template.
+//
+// About Dialog:
+//   • Displays version information using CAboutVersions.
+//
+// This file contains the operational “glue” that binds together the
+// document, view, and frame classes, ensuring PhotoPrinter starts,
+// runs, and shuts down as a cohesive application.
+/////////////////////////////////////////////////////////////////////////////
 
 /////////////////////////////////////////////////////////////////////////////
 CPhotoPrinterApp::CPhotoPrinterApp() noexcept

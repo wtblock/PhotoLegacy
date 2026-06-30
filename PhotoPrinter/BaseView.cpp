@@ -1,4 +1,4 @@
-/////////////////////////////////////////////////////////////////////////////
+﻿/////////////////////////////////////////////////////////////////////////////
 // Copyright (c) 2025 by W. T. Block, All Rights Reserved
 /////////////////////////////////////////////////////////////////////////////
 
@@ -62,7 +62,18 @@ BOOL CBaseView::PreCreateWindow(CREATESTRUCT& cs)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-// render the page or view
+// render
+//
+// Sets the logical origin of the device context based on the view’s
+// scroll position (TopOfView / LeftOfView).
+//
+// All drawing performed by derived classes occurs in logical inches,
+// not pixels. This ensures identical layout across devices.
+//
+// Example:
+//   pDC->SetWindowOrg(InchesToLogical(dLeftOfView),
+//                     InchesToLogical(dTopOfView));
+/////////////////////////////////////////////////////////////////////////////
 void CBaseView::render
 (
 	CDC* pDC,
@@ -84,6 +95,24 @@ void CBaseView::render
 
 } // render
 
+/////////////////////////////////////////////////////////////////////////////
+// OnDraw
+//
+// Core drawing routine for the view.
+//
+// Steps:
+//   1. Optionally create a memory DC (double buffering) to eliminate flicker.
+//   2. Call SetDrawDC() to configure mapping mode and logical extents.
+//   3. Call render() to draw the document using logical coordinates.
+//   4. If double‑buffering is enabled, BitBlt the memory bitmap to screen.
+//
+// render() is the unified entry point used for:
+//   • Screen display
+//   • Print preview
+//   • Printer output
+//   • Image/PDF export
+//
+// Derived classes override render() to draw actual content.
 /////////////////////////////////////////////////////////////////////////////
 void CBaseView::OnDraw( CDC* pDC )
 {
@@ -251,7 +280,20 @@ CBaseDoc* CBaseView::GetDocument() const // non-debug version is inline
 #endif //_DEBUG
 
 /////////////////////////////////////////////////////////////////////////////
-// generate font characteristics from given properties
+// BuildFont
+//
+// Creates a LOGFONT with support for:
+//   • Bold / italic
+//   • Vertical text
+//   • Rotation (Escapement)
+//   • Character set
+//   • Horizontal/vertical flipping
+//
+// Used for:
+//   • Page headers
+//   • Captions
+//   • Rotated text in photo books
+/////////////////////////////////////////////////////////////////////////////
 void CBaseView::BuildFont
 (
 	CString csFace, // name of the font face
@@ -321,8 +363,24 @@ void CBaseView::OnPrepareDC( CDC * pDC, CPrintInfo * pInfo )
 } // OnPrepareDC
 
 /////////////////////////////////////////////////////////////////////////////
-// prepare the device context for drawing and
-// return the logical width
+// SetDrawDC
+//
+// Configures the device context for logical drawing using MM_ISOTROPIC.
+//
+// MM_ISOTROPIC guarantees:
+//   • Uniform scaling in X and Y
+//   • Logical units map to inches * Map
+//   • Aspect ratio is preserved
+//
+// WindowExt  → logical size of the document region
+// ViewportExt → physical size of the client window
+//
+// This method is called for:
+//   • Screen drawing
+//   • Print preview
+//   • Zooming
+//   • Mousewheel zoom operations
+/////////////////////////////////////////////////////////////////////////////
 int CBaseView::SetDrawDC
 (
 	CDC* pDC
@@ -367,7 +425,18 @@ int CBaseView::SetDrawDC
 } // SetDrawDC
 
 /////////////////////////////////////////////////////////////////////////////
-// prepare the device context for printing
+// SetPrintDC
+//
+// Configures the device context for printing.
+//
+// Converts printer pixel dimensions into logical inches using the
+// document’s Map (logical DPI).
+//
+// Ensures:
+//   • Entire page width is visible
+//   • Aspect ratio is preserved
+//   • Coordinates match screen preview exactly
+/////////////////////////////////////////////////////////////////////////////
 void CBaseView::SetPrintDC
 (
 	CDC* pDC,
@@ -406,7 +475,16 @@ void CBaseView::SetPrintDC
 } // SetPrintDC
 
 /////////////////////////////////////////////////////////////////////////////
-// prepare the device context for printing
+// SetImageDC
+//
+// Same as SetPrintDC, but uses a caller‑specified DPI.
+//
+// Used for:
+//   • High‑resolution image export
+//   • PDF export
+//
+// Ensures exported images match printed output exactly.
+/////////////////////////////////////////////////////////////////////////////
 void CBaseView::SetImageDC
 (
 	CDC* pDC,
@@ -468,6 +546,21 @@ BOOL CBaseView::OnEraseBkgnd( CDC* pDC )
 #endif
 } // OnEraseBkgnd
 
+/////////////////////////////////////////////////////////////////////////////
+// SetupScrollBars / AdjustHeightScrollBar / AdjustWidthScrollBar
+//
+// Computes scrollbar ranges based on logical document size.
+//
+// Scrollbars operate in logical inches, not pixels.
+//
+// HeightScroll / WidthScroll handle:
+//   • Line up/down
+//   • Page up/down
+//   • Thumb tracking
+//   • Home/End
+//
+// Horizontal mode inverts scroll direction to maintain intuitive behavior.
+/////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 // adjust width scroll bar
 void CBaseView::AdjustWidthScrollBar()
@@ -928,7 +1021,15 @@ void CBaseView::OnKeyDown( UINT nChar, UINT nRepCnt, UINT nFlags )
 } // OnKeyDown
 
 /////////////////////////////////////////////////////////////////////////////
-// handler for the WM_MOUSEWHEEL windows message
+// OnMouseWheel
+//
+// Ctrl + MouseWheel → zoom in/out
+// Shift + MouseWheel → horizontal scroll
+// MouseWheel alone → vertical scroll
+//
+// After zooming, TranslatePresentation() adjusts scroll origin so the
+// mouse pointer remains focused on the same logical content.
+/////////////////////////////////////////////////////////////////////////////
 BOOL CBaseView::OnMouseWheel
 (
 	UINT nFlags, short zDelta, CPoint point
@@ -995,10 +1096,19 @@ BOOL CBaseView::OnMouseWheel
 } // OnMouseWheel
 
 /////////////////////////////////////////////////////////////////////////////
-// The given points represent the physical and logical co-ordinates
-// of the mouse pointer before a zoom operation. This routine will 
-// translate the presentation to keep the displayed data centered 
-// on the given co-ordinates after the zoom operation completes
+// TranslatePresentation
+//
+// Ensures that after zooming, the content under the mouse pointer remains
+// centered in the same logical position.
+//
+// Steps:
+//   1. Convert physical mouse point → logical coordinates before zoom.
+//   2. Convert physical mouse point → logical coordinates after zoom.
+//   3. Compute logical delta.
+//   4. Adjust TopOfView and LeftOfView accordingly.
+//
+// This produces smooth, intuitive zoom behavior similar to modern viewers.
+/////////////////////////////////////////////////////////////////////////////
 void CBaseView::TranslatePresentation
 (
 	CDC* pDC, CPoint ptPhysical, CPoint ptLogical, int nLogicalWidth

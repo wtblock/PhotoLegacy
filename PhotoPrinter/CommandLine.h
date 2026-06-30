@@ -1,10 +1,57 @@
-/////////////////////////////////////////////////////////////////////////////
+﻿/////////////////////////////////////////////////////////////////////////////
 // Copyright (c) 2025 by W. T. Block, All Rights Reserved
 /////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include "afxwin.h"
 #include <memory>
 
+/////////////////////////////////////////////////////////////////////////////
+// CCommandLine
+//
+// Lightweight command‑line parser for PhotoPrinter. Many of my applications
+// use a more elaborate command‑line processor, but PhotoPrinter requires only
+// a single optional parameter: a working folder override.
+//
+// Purpose:
+//   • Interpret command‑line arguments passed to PhotoPrinter.
+//   • Allow the user (or a batch file) to specify a working folder using:
+//         /work <folder_path>
+//   • Provide a simple, predictable interface for CPhotoPrinterApp to read
+//     command‑line data exactly once during startup.
+//
+// Why this class exists:
+//   MFC’s CCommandLineInfo provides basic parsing, but PhotoPrinter needs a
+//   small amount of custom logic to support a “working folder” override.
+//   Rather than embedding parsing logic inside the application class,
+//   CCommandLine encapsulates it cleanly and consistently.
+//
+// Responsibilities:
+//   • Track the most recent flag encountered (LastFlag).
+//   • Recognize the “/work” flag and capture its associated folder path.
+//   • Provide the WorkingFolder property to the application.
+//   • Provide GetParameters() for reconstructing the raw command‑line string.
+//   • Delegate unknown flags/values back to the base CCommandLineInfo parser.
+//
+// Parsing Behavior:
+//   • Flags are processed by ParseParamFlag():
+//         /work   → LastFlag = paramWork
+//         anything else → not handled (base class processes it)
+//   • Values are processed by ParseParamNotFlag():
+//         paramWork → WorkingFolder = <value>
+//         anything else → not handled (base class processes it)
+//   • ParseParam() coordinates flag/value handling and calls ParseLast().
+//
+// Usage in PhotoPrinter:
+//   • CPhotoPrinterApp creates a CCommandLine instance during InitInstance().
+//   • ParseCommandLine() fills in WorkingFolder if provided.
+//   • If no /work parameter is given, the application defaults to the current
+//     directory.
+//   • The working folder is then propagated to CPhotoPrinterDoc.
+//
+// This class intentionally remains simple. It provides just enough structure
+// to support PhotoPrinter’s startup behavior without the complexity required
+// in other applications.
+/////////////////////////////////////////////////////////////////////////////
 class CCommandLine : public CCommandLineInfo
 {
 // public definitions

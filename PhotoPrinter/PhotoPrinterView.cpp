@@ -1,4 +1,4 @@
-/////////////////////////////////////////////////////////////////////////////
+﻿/////////////////////////////////////////////////////////////////////////////
 // Copyright (c) 2025 by W. T. Block, All Rights Reserved
 /////////////////////////////////////////////////////////////////////////////
 #include "pch.h"
@@ -52,6 +52,15 @@ CPhotoPrinterView::~CPhotoPrinterView()
 }
 
 /////////////////////////////////////////////////////////////////////////////
+// PreCreateWindow
+//
+// Forces classic scrollbars and disables composited rendering.
+//
+// Reason:
+//   • WS_EX_COMPOSITED causes scrollbars to flicker and behave poorly
+//     with custom mapping modes.
+//   • WS_EX_CLIENTEDGE restores classic scrollbar appearance.
+/////////////////////////////////////////////////////////////////////////////
 BOOL CPhotoPrinterView::PreCreateWindow(CREATESTRUCT& cs)
 {
 	cs.style |= WS_VSCROLL | WS_HSCROLL; // Ensure scrollbars are enabled
@@ -61,6 +70,15 @@ BOOL CPhotoPrinterView::PreCreateWindow(CREATESTRUCT& cs)
 	return CBaseView::PreCreateWindow(cs);
 } // PreCreateWindow
 
+/////////////////////////////////////////////////////////////////////////////
+// RenderMargins
+//
+// Draws page margins and page boundary lines.
+//
+// Behavior:
+//   • Draws outer margin rectangle on page 1.
+//   • Draws bottom‑of‑page line when not printing/exporting.
+//   • Uses logical inches for consistent layout across devices.
 /////////////////////////////////////////////////////////////////////////////
 void CPhotoPrinterView::RenderMargins
 (
@@ -115,6 +133,16 @@ void CPhotoPrinterView::RenderMargins
 
 } // RenderMargins
 
+/////////////////////////////////////////////////////////////////////////////
+// RenderHeader
+//
+// Draws page header containing:
+//   • Book title
+//   • Album/folder name
+//
+// Behavior:
+//   • Alternates left/right alignment for even/odd pages.
+//   • Skips overhead pages (title page + TOC pages).
 /////////////////////////////////////////////////////////////////////////////
 void CPhotoPrinterView::RenderHeader
 (
@@ -188,6 +216,15 @@ void CPhotoPrinterView::RenderHeader
 } // RenderHeader
 
 /////////////////////////////////////////////////////////////////////////////
+// RenderFooter
+//
+// Draws page footer containing:
+//   • "Page X of Y"
+//
+// Behavior:
+//   • Skips overhead pages.
+//   • Uses logical inches for consistent placement.
+/////////////////////////////////////////////////////////////////////////////
 void CPhotoPrinterView::RenderFooter
 (
 	CDC* pDC, double dLeftOfView, double dTopOfView,
@@ -248,6 +285,18 @@ void CPhotoPrinterView::RenderFooter
 	pDC->RestoreDC(nDC);
 } // RenderFooter
 
+/////////////////////////////////////////////////////////////////////////////
+// RenderTitlePage
+//
+// Draws the book’s title page (page 1):
+//   • Title
+//   • Subtitle
+//   • Publisher
+//   • ISBN
+//   • Copyright
+//   • Description
+//
+// Uses large fonts and centered layout.
 /////////////////////////////////////////////////////////////////////////////
 void CPhotoPrinterView::RenderTitlePage
 (
@@ -324,6 +373,15 @@ void CPhotoPrinterView::RenderTitlePage
 	pDC->RestoreDC(nDC);
 } // RenderTitlePage
 
+/////////////////////////////////////////////////////////////////////////////
+// RenderTableOfContentsPage
+//
+// Draws TOC pages (pages 2..N):
+//   • Section labels
+//   • Page numbers
+//   • Dot leaders
+//
+// Supports multi‑page TOC with 55 lines per page.
 /////////////////////////////////////////////////////////////////////////////
 void CPhotoPrinterView::RenderTableOfContentsPage
 (
@@ -420,6 +478,20 @@ void CPhotoPrinterView::RenderTableOfContentsPage
 } // RenderTableOfContentsPage
 
 /////////////////////////////////////////////////////////////////////////////
+// DrawImage
+//
+// Draws an image inside a rectangle while preserving aspect ratio.
+//
+// Steps:
+//   1. Compute aspect ratio.
+//   2. Fit image inside rectangle.
+//   3. Center image.
+//   4. Use CImagePlus to draw using StretchDIBits.
+//
+// Reason:
+//   GDI+ Graphics::DrawImage does NOT honor mapping mode.
+//   CImagePlus ensures identical layout across screen, printer, and export.
+/////////////////////////////////////////////////////////////////////////////
 void CPhotoPrinterView::DrawImage
 (
 	CDC* pDC, shared_ptr<Image>& pImage, const CRect* pRect
@@ -474,6 +546,15 @@ void CPhotoPrinterView::DrawImage
 
 } // DrawImage
 
+/////////////////////////////////////////////////////////////////////////////
+// RenderImagePage
+//
+// Draws all images on the current page.
+//
+// Optimization:
+//   • Skips rectangles entirely above or below the visible region.
+//   • Uses FindImage() to retrieve cached GDI+ Image objects.
+//   • Uses DrawImage() for device‑independent rendering.
 /////////////////////////////////////////////////////////////////////////////
 void CPhotoPrinterView::RenderImagePage
 (
@@ -537,7 +618,18 @@ void CPhotoPrinterView::RenderImagePage
 } // RenderImagePage
 
 /////////////////////////////////////////////////////////////////////////////
-// render the page or view
+// render
+//
+// Master rendering loop.
+//
+// Behavior:
+//   • Iterates through all pages.
+//   • Draws only pages intersecting the visible region.
+//   • Calls all page‑component renderers.
+//   • Updates Properties pane.
+//
+// This is the core of PhotoPrinter’s multi‑page rendering engine.
+/////////////////////////////////////////////////////////////////////////////
 void CPhotoPrinterView::render
 (
 	CDC* pDC,
@@ -610,6 +702,36 @@ void CPhotoPrinterView::render
 } // render
 
 /////////////////////////////////////////////////////////////////////////////
+// EncodeBitmapToJpegMemory
+//
+// Encodes a GDI+ Bitmap into a JPEG byte buffer entirely in memory.
+//
+// Purpose:
+//   PhotoPrinter’s PDF export pipeline requires each rendered page to be
+//   embedded as a JPEG *without* writing temporary files to disk. GDI+
+//   normally saves images only to filenames or streams, so this helper
+//   creates an in‑memory IStream, saves the Bitmap into it using the JPEG
+//   encoder, and then copies the encoded bytes into a std::vector<BYTE>.
+//
+// Why this exists:
+//   • PDF export needs raw JPEG bytes for AddPageFromJpegMemory().
+//   • Avoids temporary JPEG files on disk (faster, cleaner, no I/O churn).
+//   • Works uniformly for any DPI or page size.
+//   • Allows configurable JPEG quality (default 90%).
+//
+// Behavior:
+//   1. Locates the JPEG encoder CLSID.
+//   2. Creates an in‑memory COM stream (HGLOBAL‑backed).
+//   3. Saves the Bitmap into the stream using the specified quality.
+//   4. Reads the encoded JPEG bytes into outBuffer.
+//   5. Returns true on success.
+//
+// Used by:
+//   • CPhotoPrinterView::ExportDocument() when exporting PDF pages.
+//   • CPdfWriter::AddPageFromJpegMemory() to embed page images directly.
+//
+// This routine is a key part of the high‑DPI, file‑free PDF export path.
+/////////////////////////////////////////////////////////////////////////////
 bool EncodeBitmapToJpegMemory
 (
 	Gdiplus::Bitmap* bmp,
@@ -673,6 +795,27 @@ bool EncodeBitmapToJpegMemory
 	return true;
 }
 
+/////////////////////////////////////////////////////////////////////////////
+// ExportDocument
+//
+// High‑DPI export engine for JPEG and PDF.
+//
+// Steps:
+//   1. Determine export folder.
+//   2. Create progress dialog.
+//   3. Loop through selected pages.
+//   4. Create high‑DPI GDI+ Bitmap.
+//   5. Render page using logical inches.
+//   6. Encode JPEG (memory or file).
+//   7. Add page to PDF (if exporting PDF).
+//   8. Add bookmarks.
+//   9. Write metadata.
+//  10. Close PDF.
+//
+// Notes:
+//   • Uses SetImageDC() to configure mapping mode for export DPI.
+//   • Uses EncodeBitmapToJpegMemory() for PDF embedding.
+//   • Uses CImagePlus for consistent rendering across devices.
 /////////////////////////////////////////////////////////////////////////////
 void CPhotoPrinterView::ExportDocument()
 {
@@ -950,6 +1093,18 @@ void CPhotoPrinterView::OnRButtonUp(UINT /* nFlags */, CPoint point)
 	OnContextMenu(this, point);
 }
 
+/////////////////////////////////////////////////////////////////////////////
+// Scrollbar context menu
+//
+// Provides quick navigation commands:
+//   • Top
+//   • Bottom
+//   • Page Up
+//   • Page Down
+//   • Line Up
+//   • Line Down
+//
+// Integrates with CBaseView’s HeightScroll() and WidthScroll().
 /////////////////////////////////////////////////////////////////////////////
 void CPhotoPrinterView::OnContextMenu(CWnd* pWnd, CPoint point)
 {

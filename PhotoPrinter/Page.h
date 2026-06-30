@@ -1,9 +1,60 @@
-/////////////////////////////////////////////////////////////////////////////
+﻿/////////////////////////////////////////////////////////////////////////////
 // Copyright (c) 2025 by W. T. Block, All Rights Reserved
 /////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include "KeyedCollection.h"
 
+/////////////////////////////////////////////////////////////////////////////
+// CPage
+//
+// Represents a single page in a PhotoPrinter document. Each page contains
+// a boundary rectangle (which varies for even/odd pages), the folder name
+// associated with the images on that page, and a collection of image
+// rectangles describing where each photograph will be placed.
+//
+// Purpose:
+//   • Provide a lightweight container for all layout information needed to
+//     render a single page of the photo book.
+//   • Store the page number, page geometry, folder name, and the set of
+//     image rectangles assigned to that page.
+//   • Allow PhotoPrinterView and the PDF export system to render pages
+//     consistently and device‑independently.
+//
+// Why this class exists:
+//   PhotoPrinter builds pages dynamically based on the number of images in
+//   each album folder. The layout rules (1‑image, 2‑image, 3‑image, 4‑image,
+//   or 6‑image templates) are computed in CPhotoPrinterDoc, but the results
+//   must be stored in a simple, reusable structure. CPage provides that
+//   structure and isolates page geometry from rendering logic.
+//
+// Responsibilities:
+//   • Store the page number (even pages on the left, odd pages on the right).
+//   • Store the page boundary rectangle (in logical units).
+//   • Store the folder name associated with the images on the page.
+//   • Store a keyed collection of image rectangles (image name → CRect).
+//   • Provide AddAnImage() to attach an image and its layout rectangle.
+//   • Provide RenderImageRectangles() for debugging or preview rendering.
+//
+// Layout Rules (computed by CPhotoPrinterDoc):
+//   • 1 image  → 1 portrait rectangle (7.3" × 10.0")
+//   • 2 images → 2 landscape rectangles (7.3" × 5.0")
+//   • 3 images → 2 portrait + 1 landscape
+//   • 4 images → 4 portrait rectangles
+//   • >4 images → 6 rectangles (3.65" × 3.33")
+//   • Images may be rotated to match their containing rectangle shape.
+//   • Rectangles are positioned relative to page margins and gutter.
+//
+// Interaction with other components:
+//   • CPhotoPrinterDoc creates and populates CPage objects during
+//     GeneratePages().
+//   • CPhotoPrinterView uses CPage to draw images, margins, and page
+//     geometry on screen.
+//   • PDF export uses CPage rectangles to place images at high DPI.
+//   • The Properties pane uses page numbers to navigate the document.
+//
+// This class is the fundamental building block of PhotoPrinter’s page
+// layout system, encapsulating all geometry and placement information
+// needed to render a complete page.
 /////////////////////////////////////////////////////////////////////////////
 class CPage
 {

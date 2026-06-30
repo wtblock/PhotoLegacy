@@ -1,9 +1,53 @@
-/////////////////////////////////////////////////////////////////////////////
+﻿/////////////////////////////////////////////////////////////////////////////
 // Copyright (c) 2025 by W. T. Block, All Rights Reserved
 /////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
+/////////////////////////////////////////////////////////////////////////////
+// CBaseDoc
+//
+// Base document class for all multi‑page, device‑independent documents in
+// the Legacy applications (PhotoPrinter, PhotoExplorer, etc.).
+//
+// Purpose:
+//   • Provide a unified definition of document geometry (page size,
+//     margins, logical DPI) so that all derived document classes render
+//     consistently across screen, print preview, printer output, and
+//     high‑DPI export.
+//   • Supply common unit‑conversion helpers (inches ↔ logical units).
+//   • Provide default implementations for page count, page size, and
+//     margin size.
+//   • Provide access to the associated view (CBaseView or derived).
+//
+// Why this class exists:
+//   MFC’s CDocument does not define any notion of page geometry or logical
+//   coordinate space. PhotoPrinter and other Legacy applications require a
+//   device‑independent layout system based on inches, not pixels. CBaseDoc
+//   introduces a fixed logical DPI (Map = 1000 logical units per inch) and
+//   exposes all document dimensions in inches, allowing CBaseView to render
+//   identically on any device.
+//
+// Responsibilities:
+//   • Define logical DPI (Map = 1000 units per inch).
+//   • Define default page size (8.5 × 11 inches).
+//   • Define default document size (same as page size unless overridden).
+//   • Define default margin (0.25 inches).
+//   • Provide conversion helpers:
+//         InchesToLogical()
+//         LogicalToInches()
+//   • Provide access to the associated view.
+//   • Provide virtual getters so derived document classes (e.g. PhotoPrinterDoc)
+//     can override page count, page size, margins, and document height.
+//
+// Notes:
+//   • CBaseDoc does not perform any rendering; it only defines geometry.
+//   • All rendering is performed by CBaseView and its derived classes.
+//   • Derived classes override GetPages(), GetHeight(), GetWidth(),
+//     GetMargin(), GetHeightOfPage(), and GetWidthOfPage as needed.
+//
+// This class is intentionally minimal. It serves as the geometric foundation
+// for the entire device‑independent rendering pipeline.
 /////////////////////////////////////////////////////////////////////////////
 class CBaseDoc : public CDocument
 {

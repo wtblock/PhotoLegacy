@@ -1,10 +1,65 @@
-/////////////////////////////////////////////////////////////////////////////
-// Copyright � by W. T. Block, all rights reserved
+﻿/////////////////////////////////////////////////////////////////////////////
+// Copyright © by W. T. Block, all rights reserved
 /////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include "resource.h"
 #include "CHelper.h"
 
+/////////////////////////////////////////////////////////////////////////////
+// CMultilineTextDialog
+//
+// Modal dialog used to edit multi‑line text fields within the property grid.
+// The standard CMFCPropertyGridProperty only supports single‑line editing,
+// so PhotoPrinter uses this dialog to provide a comfortable, resizable,
+// multi‑line editor for fields such as “Description” and “Query”.
+//
+// Purpose:
+//   • Provide a dedicated multi‑line text editor invoked from
+//     CPropertyGridMultilineText.
+//   • Allow users to enter long descriptive text with proper line breaks,
+//     scrolling, resizing, and TAB insertion.
+//   • Convert between the property grid’s internal newline format and the
+//     edit control’s CR/LF requirements.
+//
+// Why this class exists:
+//   The MFC property grid cannot display multi‑line edit controls inline.
+//   PhotoPrinter requires a clean, user‑friendly way to edit long text
+//   metadata. This dialog solves that problem by presenting a full‑size
+//   edit box with:
+//       – Resizable layout
+//       – Optional maximum length
+//       – Custom title
+//       – Correct newline handling
+//       – TAB key insertion (instead of focus navigation)
+//
+// Responsibilities:
+//   • Display and manage a multi‑line edit control (IDC_EDIT_COMMENT_TEXT).
+//   • Convert newline tokens between “\n”, “\r\n”, and escaped “\\n” forms.
+//   • Track and return the edited text via GetValue().
+//   • Position the dialog near the property grid item that launched it.
+//   • Support dynamic resizing of the edit box and OK/Cancel buttons.
+//   • Allow TAB characters to be inserted directly into the text.
+//
+// Interaction with other components:
+//   • Launched by CPropertyGridMultilineText::OnClickButton().
+//   • Returns edited text to the property grid, which then updates
+//     CPhotoPrinterDoc through the normal property‑change pipeline.
+//   • Uses CHelper for string manipulation where needed.
+//
+// Wizard‑generated portions:
+//   • Base dialog class (CDialog), DDX/DDV mapping, message map.
+//
+// Application‑specific additions:
+//   • Newline conversion logic (SetValue / GetValue).
+//   • TAB insertion override (PreTranslateMessage).
+//   • Dynamic layout in OnSize().
+//   • Title and position customization.
+//   • Maximum length enforcement.
+//
+// This dialog provides a polished, user‑friendly multi‑line editor that
+// integrates seamlessly with the property grid and greatly improves the
+// metadata editing experience in PhotoPrinter.
+/////////////////////////////////////////////////////////////////////////////
 class CMultilineTextDialog : public CDialog
 {
 	DECLARE_DYNAMIC( CMultilineTextDialog )

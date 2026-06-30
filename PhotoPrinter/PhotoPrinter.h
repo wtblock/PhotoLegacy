@@ -1,4 +1,4 @@
-/////////////////////////////////////////////////////////////////////////////
+﻿/////////////////////////////////////////////////////////////////////////////
 // Copyright (c) 2025 by W. T. Block, All Rights Reserved
 /////////////////////////////////////////////////////////////////////////////
 #pragma once
@@ -17,6 +17,51 @@
 using namespace Gdiplus;
 using namespace std;
 
+/////////////////////////////////////////////////////////////////////////////
+// CPhotoPrinterApp
+//
+// Application class for PhotoPrinter. This class represents the top‑level
+// MFC application object and is responsible for initializing the program,
+// managing global state, and coordinating high‑level behaviors shared across
+// the document/view architecture.
+//
+// Purpose:
+//   • Initialize MFC, OLE/COM, and GDI+ for the entire application.
+//   • Create the main frame window and connect it to the document/view
+//     architecture (CPhotoPrinterDoc + CPhotoPrinterView).
+//   • Maintain global configuration such as the working folder, command‑line
+//     parameters, application look, and high‑color icon support.
+//   • Provide helper functions used throughout the application, including
+//     idle‑time processing, custom state loading/saving, and UI updates.
+//   • Serve as the central access point for application‑wide objects such as
+//     the Properties pane, context menu manager, and progress dialogs.
+//
+// Why this class exists:
+//   MFC applications rely on a single global application object derived from
+//   CWinAppEx. PhotoPrinter uses this class to unify initialization, global
+//   state, and shared UI components so that the document and view classes can
+//   focus solely on book‑building and rendering logic.
+//
+// Responsibilities:
+//   • Initialize the application (InitInstance) and shut it down cleanly
+//     (ExitInstance), including GDI+ startup/shutdown.
+//   • Parse and store command‑line arguments using CCommandLine.
+//   • Manage the optional working folder used by CPhotoPrinterDoc.
+//   • Provide OnIdle() processing for progress dialogs and background tasks.
+//   • Load and save custom application state (window layout, settings).
+//   • Handle application‑level commands (File Open, About).
+//
+// Interaction with other components:
+//   • CPhotoPrinterDoc retrieves the working folder from this class.
+//   • CPhotoPrinterView uses the application object to access the main frame
+//     and update the Properties pane.
+//   • ExportDocument uses the application’s idle loop to keep the UI responsive.
+//   • Thumbnail dialogs use the application object as their parent/owner.
+//   • Command‑line data is consumed once and then destroyed to prevent stale
+//     parameters from affecting subsequent document openings.
+//
+// This class provides the “glue” that binds together the document, view,
+// and UI framework, ensuring PhotoPrinter behaves as a cohesive application.
 /////////////////////////////////////////////////////////////////////////////
 class CPhotoPrinterApp : public CWinAppEx
 {

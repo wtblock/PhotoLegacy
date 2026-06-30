@@ -19,6 +19,22 @@ BEGIN_MESSAGE_MAP(CBaseDoc, CDocument)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
+// CBaseDoc Implementation
+//
+// Provides default document geometry and unit conversion helpers.
+// Derived classes override virtual getters to define custom page counts,
+// page sizes, margins, and document dimensions.
+//
+// Serialize() is intentionally empty because most Legacy applications
+// manage their own persistence formats (binary index, image metadata,
+// project files, etc.).
+//
+// OnNewDocument() simply resets the document for SDI applications.
+//
+// Debug helpers (AssertValid, Dump) delegate to CDocument.
+/////////////////////////////////////////////////////////////////////////////
+// 
+/////////////////////////////////////////////////////////////////////////////
 CBaseDoc::CBaseDoc()
 {
 }
