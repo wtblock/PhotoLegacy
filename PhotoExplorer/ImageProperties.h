@@ -1,5 +1,5 @@
-/////////////////////////////////////////////////////////////////////////////
-// Copyright � by W. T. Block, all rights reserved
+﻿/////////////////////////////////////////////////////////////////////////////
+// Copyright © by W. T. Block, all rights reserved
 /////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include "KeyedCollection.h"
@@ -35,6 +35,93 @@ using namespace std;
 
 #define PropertyTagPrintIMVersion			0xC4A5
 
+/////////////////////////////////////////////////////////////////////////////
+// CImageProperties
+//
+// Central metadata manager for Photo Explorer. This class loads, interprets,
+// organizes, edits, and saves all EXIF/GDI+ metadata associated with an image.
+// It provides a high-level, structured interface over raw GDI+ PropertyItem
+// data, enabling Photo Explorer to present metadata in a meaningful, organized,
+// user-friendly way.
+//
+// Purpose:
+//   • Read all EXIF/GDI+ properties from an image file.
+//   • Convert raw metadata into structured CImageProperty objects.
+//   • Provide descriptive labels, groups, and dropdown enumerations for UI.
+//   • Track modifications and write updated metadata back to JPEG files.
+//   • Support album labeling, date extraction, and property panel updates.
+//   • Provide fast lookup tables for property IDs, types, MIME types, and
+//     class IDs.
+//
+// Why this class exists:
+//   GDI+ exposes metadata through low-level PropertyItem structures containing
+//   raw pointers, byte lengths, and type codes. Managing these directly is
+//   cumbersome and error-prone. CImageProperties transforms this raw metadata
+//   into a rich, structured system:
+//
+//       – Human-readable property groups and labels
+//       – Descriptions for UI tooltips
+//       – Enumerations for dropdowns (e.g., flash modes, metering modes)
+//       – Automatic type conversion using VARENUM
+//       – Organized collections for fast lookup
+//       – Modification tracking and safe metadata writing
+//
+// Responsibilities:
+//   • Maintain the pathname of the image being analyzed.
+//   • Load metadata from GDI+ Image objects and convert each PropertyItem
+//     into a CImageProperty.
+//   • Maintain collections:
+//       – Types: EXIF/GDI+ type → VARENUM
+//       – IDs: PropertyID → “group|label” key
+//       – PropertyTags: metadata definitions (group, label, description,
+//         enumerations, type info)
+//       – Properties: actual metadata values for the current image
+//       – DateIDs: mapping of “Year”, “Month”, etc. to index positions
+//   • Provide lookup helpers for:
+//       – Property keys
+//       – Property tags
+//       – Variant types
+//       – Property type sizes and names
+//       – MIME type and class ID resolution (CExtension)
+//   • Update the property panel UI with grouped, formatted metadata.
+//   • Save modified metadata back to the image and its thumbnail.
+//   • Extract “Date Taken” from filenames when metadata is missing.
+//   • Provide CSV formatting, multiline formatting, and date formatting.
+//
+// Interaction with other components:
+//   • CImageProperty — represents individual metadata items.
+//   • CPropertyTag — defines metadata descriptions, labels, and enumerations.
+//   • CPropertiesWnd — displays metadata in the property grid.
+//   • CDate — stores parsed date/time information for the image.
+//   • CHelper — assists with type conversion and vector extraction.
+//   • MainFrm / PhotoExplorerDoc — coordinate UI updates and document changes.
+//
+// Key Features:
+//   • Full EXIF coverage: camera settings, GPS, thumbnail info, XP tags,
+//     rating tags, and custom tags not defined in GDI+.
+//   • Automatic type mapping from EXIF type codes to VARIANT types.
+//   • Rich metadata definitions including descriptions and dropdown choices.
+//   • MIME type and CLSID lookup for image formats (BMP, GIF, JPEG, PNG, TIFF).
+//   • Safe bitmap loading that avoids file locking (LoadBitmapFromFile).
+//   • Album label application for custom metadata workflows.
+//   • Robust property creation and modification (short, string, ASCII).
+//   • File-open detection to avoid writing to locked files.
+//
+// Internal Structure:
+//   • m_TypeCollection — maps EXIF type codes to VARENUM.
+//   • m_IdCollection — maps PropertyID → “group|label” keys.
+//   • m_PropertyTags — metadata definitions for each property.
+//   • m_Properties — actual metadata values for the current image.
+//   • m_DateIDs — index mapping for date/time components.
+//   • m_Extension — resolves file extension → MIME type → CLSID.
+//   • m_Date — stores parsed date/time for the image.
+//   • m_wModifiedValues — tracks how many properties were changed.
+//
+// This class forms the backbone of Photo Explorer’s metadata system,
+// transforming raw EXIF/GDI+ metadata into a structured, editable,
+// meaningful representation that integrates seamlessly with the UI,
+// album system, and image-saving pipeline.
+/////////////////////////////////////////////////////////////////////////////
 class CImageProperties
 {
 	////////////////////////////////////////////////////////////////////////////

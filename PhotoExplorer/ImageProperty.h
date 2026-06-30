@@ -13,8 +13,77 @@ using namespace Gdiplus;
 // container holding the property
 	class CImageProperties;
 
-/////////////////////////////////////////////////////////////////////////////
-class CImageProperty
+	/////////////////////////////////////////////////////////////////////////////
+	// CImageProperty
+	//
+	// Represents a single EXIF or metadata property belonging to an image.
+	// This class provides a complete abstraction over GDI+ PropertyItem,
+	// allowing Photo Explorer to read, interpret, modify, and write metadata
+	// in a structured, type-safe, user-friendly manner.
+	//
+	// Purpose:
+	//   • Wrap raw GDI+ PropertyItem structures in a safe C++ class.
+	//   • Store metadata values using CVariantVector for flexible type handling.
+	//   • Provide human-readable labels, descriptions, and UI-friendly values.
+	//   • Support editing, modification tracking, and property regeneration.
+	//   • Serve as the fundamental building block of CImageProperties, the
+	//     container that holds all metadata for a single image.
+	//
+	// Why this class exists:
+	//   GDI+ exposes metadata through PropertyItem, a low-level struct with
+	//   raw pointers, byte lengths, and type codes. Managing these directly is
+	//   error-prone. CImageProperty wraps this complexity and provides:
+	//
+	//       – Automatic memory management
+	//       – Type-safe access via VARIANT and CVariantVector
+	//       – Human-readable property labels and descriptions
+	//       – Conversion utilities (comma-separated values, UI strings)
+	//       – Property regeneration for writing metadata back to images
+	//
+	// Responsibilities:
+	//   • Store the raw metadata value (Data / DataItem).
+	//   • Track the EXIF/GDI+ type (PropertyType) and VARIANT type (DataType).
+	//   • Store property ID, group, label, and description.
+	//   • Provide formatted output for UI display (UserInterfaceValue).
+	//   • Provide dropdown choices for enumerated EXIF fields (DropdownChoices).
+	//   • Convert arrays of bytes into typed vectors (CopyArray / CopyText).
+	//   • Generate new GDI+ PropertyItem objects for writing metadata back
+	//     into images (GeneratePropertyItem / GetPropertyItem).
+	//   • Track modification state (Modified property).
+	//
+	// Interaction with other components:
+	//   • CImageProperties owns a collection of CImageProperty objects.
+	//   • Metadata editors (property grid, shortcut expansion, multiline dialogs)
+	//     read and write values through this class.
+	//   • EXIF utilities (CExifRotation, CGlobalPosition) interpret specific
+	//     property IDs using this class’s data.
+	//   • Image-saving routines use GeneratePropertyItem() to embed updated
+	//     metadata into JPEG files.
+	//
+	// Key Features:
+	//   • Full support for all EXIF/GDI+ property types (ASCII, BYTE, SHORT,
+	//     LONG, RATIONAL, UNDEFINED, etc.).
+	//   • Conversion helpers for multi-value properties (e.g., component
+	//     configuration, GPS arrays, EXIF version fields).
+	//   • PropertyKey combines group + label for unique identification.
+	//   • CommaSeparatedValue provides a normalized representation for UI,
+	//     logging, or export.
+	//   • UpdateProperty() synchronizes the property with a GDI+ Image.
+	//
+	// Internal Structure:
+	//   • m_PropertyValue (CVariantVector) stores the actual metadata bytes.
+	//   • m_varDataType stores the VARIANT type used for conversion.
+	//   • m_wPropertyType stores the EXIF/GDI+ type code.
+	//   • m_ulPropertyID stores the EXIF tag ID.
+	//   • m_csPropertyGroup and m_csPropertyLabel organize metadata logically.
+	//   • m_csPropertyDescription provides human-readable context.
+	//   • m_bModified tracks whether the user changed the property.
+	//
+	// This class provides the foundation for Photo Explorer’s metadata system,
+	// transforming raw EXIF/GDI+ property items into structured, editable,
+	// meaningful metadata that can be displayed, modified, and saved reliably.
+	/////////////////////////////////////////////////////////////////////////////
+	class CImageProperty
 {
 // public data type
 public:

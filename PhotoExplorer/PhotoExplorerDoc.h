@@ -1,5 +1,5 @@
-/////////////////////////////////////////////////////////////////////////////
-// Copyright � by W. T. Block, all rights reserved
+﻿/////////////////////////////////////////////////////////////////////////////
+// Copyright © by W. T. Block, all rights reserved
 /////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include "ExifRotation.h"
@@ -16,6 +16,103 @@ using namespace std;
 class CPhotoExplorerView;
 class CImageView;
 
+/////////////////////////////////////////////////////////////////////////////
+// CPhotoExplorerDoc
+//
+// The central document class for Photo Explorer. This class manages all
+// data associated with the currently selected folder, including image lists,
+// thumbnails, metadata, album information, shortcuts, and background folder
+// monitoring. It serves as the core data model for the application, providing
+// the views with everything they need to display, annotate, and manipulate
+// images.
+//
+// Purpose:
+//   • Represent the active folder and all images within it.
+//   • Maintain the selected image and its associated metadata.
+//   • Manage album-level information (title, location, date, artist, etc.).
+//   • Generate thumbnails and cache them for fast UI updates.
+//   • Provide EXIF rotation, metadata extraction, and date-taken logic.
+//   • Support multi-selection of images and batch operations.
+//   • Monitor the folder for changes using a background thread.
+//   • Provide Google/Bing map link generation from GPS metadata.
+//   • Read and write album XML files and image detail files.
+//   • Resolve shortcuts and symbolic paths for rapid metadata entry.
+//
+// Why this class exists:
+//   Photo Explorer is built around folders of images. The document must
+//   maintain a complete, consistent representation of the folder’s contents,
+//   including thumbnails, metadata, album information, and selection state.
+//   CPhotoExplorerDoc centralizes all of this logic so the views (list view,
+//   image view, properties pane) can remain lightweight and responsive.
+//
+// Responsibilities:
+//   • Track the active folder (m_csFolder) and its image list (m_ImageNames).
+//   • Maintain the selected image (m_pSelectedBitmap) and its EXIF rotation.
+//   • Manage album-level metadata fields and fallback rules:
+//       – Title, Comment, Location, Date, Artist, Copyright,
+//         Software, Keywords.
+//   • Provide album fallback flags (m_bAlbumTitle, m_bAlbumLocation, etc.).
+//   • Maintain collections:
+//       – SelectedImages (multi-selection)
+//       – AddedPaths / DeletedPaths (folder changes)
+//       – Thumbnails (cached Bitmap objects)
+//       – Shortcuts (metadata abbreviations)
+//       – AlbumFolders / TwoDateFolders / EndDateFolders / NoDateFolders
+//   • Provide metadata helpers:
+//       – ResolveShortcuts
+//       – MapShortcuts
+//       – GetRealPath
+//       – WriteAlbumToImage / WriteAlbumToBitmap
+//       – ReadImageDetails / ParseAlbumDetails
+//   • Provide GPS helpers:
+//       – ConvertDMSToDecimal
+//       – GenerateMapLink (Google/Bing)
+//   • Provide folder monitoring via background thread:
+//       – StartMonitorThread
+//       – StopMonitorThread
+//       – MonitorDirectoryThread
+//   • Provide thumbnail generation (CreateThumbnail).
+//   • Provide date-taken extraction and file renaming logic.
+//
+// Interaction with other components:
+//   • CPhotoExplorerView — displays thumbnails and folder contents.
+//   • CImageView — displays the selected image with labels.
+//   • CImageProperties — manages metadata for the selected image.
+//   • CPlusGDI — wraps GDI+ image loading and measurement.
+//   • CExifRotation — corrects image orientation.
+//   • CThumbnailDialog — used for batch thumbnail operations.
+//   • CMapDialog — displays map links for GPS-tagged images.
+//   • CMainFrame — coordinates UI updates and docking panes.
+//   • COutputWnd — receives progress/warning/error messages.
+//
+// Key Features:
+//   • Full album metadata system with fallback rules.
+//   • Shortcut expansion for rapid metadata entry (e.g., @loc → “Nederland, TX”).
+//   • GPS coordinate parsing and map link generation.
+//   • Thumbnail caching for fast UI performance.
+//   • Background folder monitoring using I/O completion ports.
+//   • XML album file reading/writing for persistent album metadata.
+//   • Image detail file parsing for folder-based metadata organization.
+//   • Multi-selection support with progress logging.
+//   • Date-taken extraction from EXIF or filename patterns.
+//   • Automatic file renaming based on date-taken.
+//
+// Internal Structure:
+//   • m_nPendingOperation — counts active operations for UI responsiveness.
+//   • m_bStopThread / m_pThread / m_hStopEvent — folder monitoring thread.
+//   • m_ImageNames — list of images in the active folder.
+//   • m_Thumbnails — cached thumbnails for fast display.
+//   • m_arrSelectedImages — multi-selection tracking.
+//   • m_PlusGDI — wrapper for selected image loading and measurement.
+//   • m_Rotator — EXIF rotation handler.
+//   • Album metadata fields (m_csTitle, m_csComment, etc.).
+//   • Album fallback flags (m_bAlbumTitle, m_bAlbumLocation, etc.).
+//   • Shortcut collections and folder correction maps.
+//
+// This class forms the backbone of Photo Explorer’s data model, providing
+// comprehensive management of images, metadata, thumbnails, album information,
+// and folder monitoring. It enables the rest of the application to present a
+// rich, responsive, and metadata-driven experience.
 /////////////////////////////////////////////////////////////////////////////
 class CPhotoExplorerDoc : public CDocument
 {

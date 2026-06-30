@@ -1,5 +1,5 @@
-/////////////////////////////////////////////////////////////////////////////
-// Copyright � by W. T. Block, all rights reserved
+﻿/////////////////////////////////////////////////////////////////////////////
+// Copyright © by W. T. Block, all rights reserved
 /////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include "KeyedCollection.h"
@@ -7,6 +7,84 @@
 
 using namespace std;
 
+/////////////////////////////////////////////////////////////////////////////
+// CPropertyTag
+//
+// Metadata definition class for Photo Explorer. Each instance of CPropertyTag
+// describes a single EXIF/GDI+ metadata field, including its ID, type,
+// group, label, description, read-only status, and any specialized entry
+// behavior (date, enum, GPS, rotation). It also maintains enumeration tables
+// for properties that require dropdown lists.
+//
+// Purpose:
+//   • Define the structure and behavior of a metadata property.
+//   • Provide group/label/description information for the property grid.
+//   • Specify the EXIF/GDI+ property ID and type (WORD, VARENUM).
+//   • Indicate whether the property is editable or read-only.
+//   • Support specialized entry types (date, enum, GPS, rotation).
+//   • Maintain enumeration mappings for dropdown-based properties.
+//
+// Why this class exists:
+//   Raw EXIF/GDI+ metadata is identified only by numeric IDs and type codes.
+//   To present metadata meaningfully in the UI, Photo Explorer needs a rich
+//   definition layer that describes each property in human terms:
+//     – Group (“Camera”, “Image”, “GPS”, “Thumbnail”)
+//     – Label (“Exposure Time”, “ISO Speed”, “Date Taken”)
+//     – Description (tooltip text)
+//     – Data type (VARENUM)
+//     – Property type (EXIF type code)
+//     – Enumeration values (e.g., flash modes, metering modes)
+//   CPropertyTag provides this definition layer.
+//
+// Responsibilities:
+//   • Store metadata definition fields:
+//       – PropertyID (EXIF/GDI+ ID)
+//       – DataType (VARENUM)
+//       – PropertyType (EXIF type code)
+//       – PropertyGroup (category name)
+//       – PropertyLabel (display name)
+//       – PropertyDescription (tooltip)
+//       – Readonly flag
+//       – EntryType (simple, date, enum, GPS, rotation)
+//   • Provide a combined key (“group|label”) for dictionary lookup.
+//   • Maintain enumeration tables:
+//       – EnumValues: USHORT → text
+//       – EnumText: text → USHORT
+//   • Provide helper methods for enumeration lookup and ordering.
+//   • Support property grid integration through descriptive metadata.
+//
+// Interaction with other components:
+//   • CImageProperties — uses CPropertyTag to build property grid entries,
+//     determine editing behavior, and map EXIF IDs to UI keys.
+//   • CPropertyGridCtrl — uses enumeration lists and entry types to render
+//     dropdowns and specialized editors.
+//   • CPropertiesWnd — displays properties using group/label/description
+//     information from CPropertyTag.
+//   • EXIF/GDI+ metadata system — provides raw property IDs and types.
+//
+// Key Features:
+//   • Full metadata definition for each EXIF/GDI+ property.
+//   • Enumeration support for dropdown-based properties.
+//   • Specialized entry types for date, GPS, and rotation fields.
+//   • Read-only flag for properties that cannot be edited.
+//   • Combined “group|label” key for dictionary lookup.
+//   • Bidirectional enumeration mapping (value→text and text→value).
+//
+// Internal Structure:
+//   • m_varDataType — VARENUM type for property grid editing.
+//   • m_wPropertyType — EXIF type code (BYTE, ASCII, SHORT, LONG, RATIONAL).
+//   • m_ulPropertyID — numeric EXIF/GDI+ property ID.
+//   • m_csPropertyGroup — category name.
+//   • m_csPropertyLabel — display label.
+//   • m_csPropertyDescription — tooltip text.
+//   • m_bReadonly — indicates whether the property is editable.
+//   • m_eEntryType — specialized entry behavior.
+//   • m_EnumValues — USHORT→CString enumeration table.
+//   • m_EnumText — CString→USHORT reverse lookup table.
+//
+// This class defines the metadata vocabulary of Photo Explorer, enabling
+// structured, descriptive, and user-friendly presentation of EXIF/GDI+ data
+// throughout the application.
 /////////////////////////////////////////////////////////////////////////////
 class CPropertyTag
 {

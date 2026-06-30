@@ -4,8 +4,76 @@
 #pragma once
 
 /////////////////////////////////////////////////////////////////////////////
-// COutputList window
-
+// COutputList / COutputWnd
+//
+// The output window subsystem for Photo Explorer. This pane provides a
+// centralized location for diagnostic messages, progress updates, warnings,
+// and error reporting. It is implemented as a dockable pane containing a
+// tab control with three list boxes—one for each output category.
+//
+// Purpose:
+//   • Display progress messages during long-running operations.
+//   • Log warnings and non-fatal issues encountered while processing images.
+//   • Log errors that require user attention.
+//   • Provide a scrollable, dockable pane that integrates with the MFC
+//     docking architecture.
+//   • Allow users to copy, clear, or inspect output via context menus.
+//
+// Why this subsystem exists:
+//   Photo Explorer performs many background operations: metadata extraction,
+//   image loading, thumbnail generation, album labeling, and file I/O.
+//   Users need visibility into what the application is doing, especially
+//   when processing large batches of images. The output pane provides a
+//   structured, categorized, and persistent log of these operations.
+//
+// Responsibilities:
+//   • Maintain three output channels:
+//       – Progress (m_wndOutputProgress)
+//       – Warnings (m_wndOutputWarnings)
+//       – Errors (m_wndOutputErrors)
+//   • Append new messages to the appropriate list box.
+//   • Automatically switch to the relevant tab when new messages arrive.
+//   • Scroll to the bottom of the list to show the latest entry.
+//   • Provide context menu actions (copy, clear, view).
+//   • Manage fonts and appearance for readability.
+//   • Integrate with the docking system and respond to resizing events.
+//
+// Interaction with other components:
+//   • CMainFrame — hosts the dockable pane and manages layout.
+//   • ThreadHelp — background operations write progress/warning/error text.
+//   • Metadata and image-processing subsystems — report issues via this pane.
+//   • MFC tab control (CMFCTabCtrl) — manages the three output tabs.
+//   • COutputList — specialized list box with context menu support.
+//
+// Key Features:
+//   • Three independent output channels with automatic tab switching.
+//   • Scroll-to-bottom behavior for real-time logging.
+//   • Context menu for copying or clearing output.
+//   • Dockable pane that can be repositioned anywhere in the UI.
+//   • Font customization for improved readability.
+//   • Simple property-based API for writing messages:
+//       – ProgressText = "Loading image…"
+//       – WarningsText = "Metadata missing for file."
+//       – ErrorsText   = "Failed to save image."
+//
+// Internal Structure:
+//   • COutputList — derived from CListBox, handles context menu actions.
+//   • COutputWnd — derived from CDockablePane, contains:
+//       – m_wndTabs (tab control)
+//       – m_wndOutputProgress (progress list)
+//       – m_wndOutputWarnings (warnings list)
+//       – m_wndOutputErrors (errors list)
+//       – m_csProgress / m_csWarning / m_csError (last written messages)
+//       – m_pFont (custom font pointer)
+//   • ShowOutputTab — switches to the correct tab.
+//   • ScrollToBottom — ensures newest messages are visible.
+//   • ClearXXXOutput — resets individual channels.
+//
+// This subsystem provides a clean, organized, and responsive logging interface,
+// giving users full visibility into Photo Explorer’s internal operations and
+// helping diagnose issues during metadata processing, image loading, and file
+// management.
+/////////////////////////////////////////////////////////////////////////////
 class COutputList : public CListBox
 {
 // Construction

@@ -10,6 +10,69 @@
 class CPropertiesWnd;
 
 /////////////////////////////////////////////////////////////////////////////
+// CPropertyGridCtrl
+//
+// Custom property grid control used by Photo Explorer to display and edit
+// metadata properties. This class extends CMFCPropertyGridCtrl with additional
+// capabilities needed for EXIF/GDI+ metadata editing, including flattening
+// hierarchical property structures, detecting value changes, routing selection
+// events, and communicating with the host pane (CPropertiesWnd).
+//
+// Purpose:
+//   • Provide a metadata-aware property grid for EXIF/GDI+ properties.
+//   • Flatten hierarchical property groups into a linear list for iteration,
+//     validation, and update operations.
+//   • Detect changes to property values using type-aware comparison logic.
+//   • Route selection changes and “select all” commands to the host pane.
+//   • Integrate tightly with CPropertiesWnd for property-change handling.
+//
+// Why this class exists:
+//   CMFCPropertyGridCtrl provides a powerful base, but Photo Explorer requires
+//   additional behavior:
+//     – Flattening nested EXIF groups into a simple list for processing.
+//     – Type-aware comparison of old/new values (string, integer, boolean,
+//       floating-point, date).
+//     – Custom message handling (WM_SELECTALL).
+//     – Coordination with the host pane for metadata updates.
+//   CPropertyGridCtrl encapsulates these behaviors cleanly.
+//
+// Responsibilities:
+//   • Maintain a pointer to the host pane (m_pHost).
+//   • Build a flat list of all editable properties (BuildFlatList).
+//   • Recursively traverse property groups (AddPropertyRecursive).
+//   • Provide type-aware comparison via ValuesAreDifferent.
+//   • Handle “select all” operations (OnSelectAll).
+//   • Override EndEditItem to finalize edits and notify the host.
+//   • Override PreTranslateMessage for keyboard shortcuts.
+//   • Override OnChangeSelection to update UI state.
+//
+// Interaction with other components:
+//   • CPropertiesWnd — receives property-change notifications and updates
+//     metadata accordingly.
+//   • CImageProperties — supplies property definitions, types, and metadata.
+//   • CMFCPropertyGridProperty — underlying property objects.
+//   • CHelper — assists with converting MFC arrays to STL vectors.
+//
+// Key Features:
+//   • Full recursive flattening of property hierarchy.
+//   • Type-aware value comparison for detecting metadata changes.
+//   • Host-aware behavior for property-change routing.
+//   • Keyboard handling for selection and editing.
+//   • Clean integration with the docking properties pane.
+//
+// Internal Structure:
+//   • m_pHost — pointer to the owning CPropertiesWnd.
+//   • BuildFlatList — produces a vector or CArray of all properties.
+//   • AddPropertyRecursive — traverses groups and subitems.
+//   • ValuesAreDifferent — compares COleVariant values by type.
+//   • EndEditItem — commits edits and triggers host notifications.
+//   • PreTranslateMessage — handles WM_SELECTALL and keyboard shortcuts.
+//   • OnChangeSelection — updates selection state in the host.
+//
+// This class provides the metadata-editing intelligence behind Photo Explorer’s
+// property pane, enabling structured, type-safe, and responsive editing of
+// EXIF/GDI+ metadata.
+/////////////////////////////////////////////////////////////////////////////
 class CPropertyGridCtrl : public CMFCPropertyGridCtrl
 {
 // protected data

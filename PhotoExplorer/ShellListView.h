@@ -14,6 +14,92 @@ using namespace Gdiplus;
 class CPhotoExplorerDoc;
 
 /////////////////////////////////////////////////////////////////////////////
+// CShellListView
+//
+// Shell-integrated list view used by Photo Explorer to display the contents
+// of the active folder. This class extends CListView and embeds a custom
+// CShellListCtrl, an image list for thumbnails, and a full CImageProperties
+// object for metadata extraction. It serves as the primary UI component for
+// browsing images, selecting items, updating thumbnails, and coordinating
+// metadata with the document.
+//
+// Purpose:
+//   • Display folder contents using a shell-style list control.
+//   • Maintain and display thumbnails for each image.
+//   • Track selected items and synchronize selection with the document.
+//   • Provide metadata extraction via CImageProperties for the selected image.
+//   • Handle folder-change events (add/delete) from the monitor thread.
+//   • Provide progress/warning/error logging to the output pane.
+//   • Support album metadata fallback logic (title, location, comment, date).
+//
+// Why this class exists:
+//   Photo Explorer requires a fast, responsive, shell-like list view that
+//   integrates tightly with metadata, thumbnails, and album logic. MFC’s
+//   CListView provides the foundation, but CShellListView adds:
+//     – Thumbnail caching and display
+//     – Metadata extraction for selected items
+//     – Integration with CPhotoExplorerDoc
+//     – Album fallback logic
+//     – Folder monitoring event handling
+//     – Selection synchronization across views
+//   This class is the backbone of the folder browsing experience.
+//
+// Responsibilities:
+//   • Host the shell list control (m_ListCtrl).
+//   • Maintain an image list for thumbnails (m_ImageList).
+//   • Store and manage metadata for the selected image (m_ImageProperties).
+//   • Track the currently selected item index (m_nSelectedItem).
+//   • Provide accessors for:
+//       – Document
+//       – ListControl
+//       – ImageList
+//       – ImageProperties
+//       – ThumbnailSize
+//       – SelectedImage
+//       – SelectedImages (multi-selection)
+//   • Provide album fallback flags (AlbumTitle, AlbumLocation, etc.).
+//   • Populate the list with images from the document (PopulateList).
+//   • Add individual images to the list (AddImageToList).
+//   • Clear list contents and cached thumbnails (ClearItems, ClearCache).
+//   • Update document tabs when selection changes (UpdateDocumentTabs).
+//   • Handle thumbnail update messages (OnUpdateThumbnail).
+//   • Handle folder add/delete events from the monitor thread.
+//
+// Interaction with other components:
+//   • CPhotoExplorerDoc — supplies folder contents, thumbnails, metadata,
+//     album information, and selection state.
+//   • CImageProperties — extracts metadata for the selected image.
+//   • CMainFrame — coordinates docking panes and UI updates.
+//   • CPropertiesWnd — displays metadata for the selected image.
+//   • COutputWnd — receives progress/warning/error messages.
+//   • CShellListCtrl — underlying list control for shell-style browsing.
+//   • GDI+ — used for thumbnail generation and image loading.
+//
+// Key Features:
+//   • Full thumbnail management with dynamic sizing.
+//   • Multi-selection support with add/remove helpers.
+//   • Album metadata fallback logic for title, location, comment, and date.
+//   • Shell-style list control with custom drawing and selection behavior.
+//   • Real-time folder monitoring integration (add/delete events).
+//   • Automatic synchronization with the document and properties pane.
+//   • Progress/warning/error logging routed through the document.
+//
+// Internal Structure:
+//   • m_ListCtrl — custom list control for shell-style browsing.
+//   • m_ImageList — thumbnail image list.
+//   • m_ImageProperties — metadata extractor for selected image.
+//   • m_uiThumbnailSize — current thumbnail size.
+//   • m_nSelectedItem — index of the selected item.
+//   • OnInitialUpdate — initializes list control and image list.
+//   • OnUpdateThumbnail — updates thumbnails when generated.
+//   • OnFolderAddEvent / OnFolderDeleteEvent — respond to monitor thread events.
+//   • SelectItemByPath — programmatically select an item in the list.
+//   • ClearCache — clears thumbnail and metadata caches.
+//
+// This class provides the core folder-browsing interface for Photo Explorer,
+// integrating thumbnails, metadata, album logic, and shell-style navigation
+// into a single cohesive view.
+/////////////////////////////////////////////////////////////////////////////
 class CShellListView : public CListView
 {
 	DECLARE_DYNCREATE(CShellListView)

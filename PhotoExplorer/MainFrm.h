@@ -25,6 +25,79 @@ class COutlookBar : public CMFCOutlookBar
 };
 
 /////////////////////////////////////////////////////////////////////////////
+// CMainFrame
+//
+// The main frame window for Photo Explorer. This class manages the overall
+// application layout, including toolbars, docking windows, navigation panes,
+// the properties pane, the output pane, and the Outlook-style navigation bar.
+// It also coordinates threading, modal UI updates, and provides convenient
+// access to the active views and document.
+//
+// Purpose:
+//   • Serve as the top-level frame window for the MDI application.
+//   • Create and manage all docking panes (navigator, properties, output,
+//     calendar, Outlook bar).
+//   • Provide fast access to the active image view, list view, and document.
+//   • Display status information such as the selected folder.
+//   • Manage UI updates during background operations via ThreadHelp.
+//   • Handle application look-and-feel, customization, and window management.
+//
+// Why this class exists:
+//   Photo Explorer is a pane-heavy application: navigation tree, properties
+//   pane, output pane, calendar bar, and multiple views. CMainFrame centralizes
+//   the creation, docking, and management of these components. It also provides
+//   utility functions for modal UI updates and exposes pointers to key panes
+//   so other components can interact with the UI cleanly.
+//
+// Responsibilities:
+//   • Create and initialize all docking windows (CreateDockingWindows).
+//   • Manage the Outlook-style navigation bar and its pages.
+//   • Provide accessors for:
+//       – ImageView (preview pane)
+//       – ListView (thumbnail or file list)
+//       – Document (active image/document)
+//       – Navigator (folder tree)
+//       – OutputPane (logging/output messages)
+//       – PropertiesPane (metadata display)
+//   • Update the status bar with the current folder (SetFolder).
+//   • Handle modal UI updates during long operations (GoModal, Wait).
+//   • Manage application look (OnApplicationLook, OnUpdateApplicationLook).
+//   • Handle window creation, closing, and customization events.
+//   • Provide message routing for toolbar creation and Outlook bar behavior.
+//
+// Interaction with other components:
+//   • CNavigator — folder tree navigation.
+//   • CPropertiesWnd — metadata display and editing.
+//   • COutputWnd — logging and diagnostic output.
+//   • CImageView — main image preview and label rendering.
+//   • ThreadHelp — ensures UI responsiveness during background tasks.
+//   • CMFCOutlookBar — provides Outlook-style navigation tabs.
+//   • PhotoExplorerDoc — active document containing image and metadata.
+//
+// Key Features:
+//   • Full docking window management with MFC’s advanced docking architecture.
+//   • Outlook-style navigation bar with multiple pages (tree, calendar, etc.).
+//   • ThreadHelp integration for smooth modal waits.
+//   • Status bar updates for current folder path.
+//   • Centralized access to all major panes and views.
+//   • Support for application themes and customization dialogs.
+//   • Message handlers for window manager, toolbar creation, and settings changes.
+//
+// Internal Structure:
+//   • m_wndMenuBar — main menu bar.
+//   • m_wndToolBar — main toolbar.
+//   • m_wndStatusBar — status bar with path indicator.
+//   • m_wndOutput — output/logging pane.
+//   • m_wndProperties — metadata properties pane.
+//   • m_wndNavigationBar — Outlook-style navigation bar.
+//   • m_wndTree — folder navigator.
+//   • m_wndCalendar — calendar pane.
+//   • m_pCurrOutlookWnd / m_pCurrOutlookPage — track active Outlook tab.
+//
+// This class forms the backbone of Photo Explorer’s user interface, managing
+// the layout, panes, navigation, and UI responsiveness that define the overall
+// user experience.
+/////////////////////////////////////////////////////////////////////////////
 class CMainFrame : public CMDIFrameWndEx, public ThreadHelp
 {
 	DECLARE_DYNAMIC(CMainFrame)

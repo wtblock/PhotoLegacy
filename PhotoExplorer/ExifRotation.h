@@ -4,17 +4,59 @@
 #pragma once
 
 /////////////////////////////////////////////////////////////////////////////
-// Here's a quick rundown of EXIF orientation codes:
+// CExifRotation
 //
-//	1 : Horizontal( normal )
-//	2 : Mirror horizontal
-//	3 : Rotate 180 degrees
-//	4 : Mirror vertical
-//	5 : Mirror horizontal and rotate 270 CW
-//	6 : Rotate 90 CW
-//	7 : Mirror horizontal and rotate 90 CW
-//	8 : Rotate 270 CW
+// Utility class that interprets and applies EXIF orientation codes to
+// GDI+ Image and Bitmap objects. Many cameras and phones store rotation
+// information in the EXIF metadata instead of physically rotating the
+// pixel data. This class reads that orientation code and applies the
+// correct transformation so images display upright in Photo Explorer.
 //
+// Purpose:
+//   • Decode EXIF orientation values (1–8) into meaningful rotation and
+//     mirroring operations.
+//   • Provide a simple interface for applying the correct transformation
+//     to GDI+ Image or Bitmap objects.
+//   • Ensure that images appear with the correct orientation regardless
+//     of how they were captured or stored.
+//
+// Why this class exists:
+//   Modern devices often store images “sideways” and rely on EXIF metadata
+//   to indicate how the viewer should rotate them. Without honoring these
+//   orientation codes, images would appear rotated 90°, 180°, or mirrored.
+//   CExifRotation centralizes this logic so Photo Explorer always displays
+//   images correctly.
+//
+// Responsibilities:
+//   • Store the EXIF orientation code (Rotation / ExifOrientation).
+//   • Provide a human-readable description (Description property).
+//   • Apply the correct rotation/mirroring to:
+//       – Gdiplus::Image
+//       – Gdiplus::Bitmap
+//   • Map EXIF codes to GDI+ RotateFlipType operations.
+//
+// Supported EXIF Orientation Codes:
+//   1 : Normal (no rotation)
+//   2 : Mirror horizontal
+//   3 : Rotate 180 degrees
+//   4 : Mirror vertical
+//   5 : Mirror horizontal + rotate 270° CW
+//   6 : Rotate 90° CW
+//   7 : Mirror horizontal + rotate 90° CW
+//   8 : Rotate 270° CW
+//
+// Interaction with other components:
+//   • Used by image-loading routines in Photo Explorer to correct
+//     orientation immediately after loading a JPEG.
+//   • Ensures thumbnails and full-size previews match the intended
+//     orientation stored in EXIF metadata.
+//   • Helps maintain consistency between Photo Explorer, Photo Printer,
+//     and external viewers.
+//
+// This class provides a clean, reliable way to interpret EXIF orientation
+// metadata and ensures that all images display correctly throughout the
+// application.
+/////////////////////////////////////////////////////////////////////////////
 class CExifRotation
 {
 public:

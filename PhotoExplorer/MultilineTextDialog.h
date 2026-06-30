@@ -1,10 +1,48 @@
-/////////////////////////////////////////////////////////////////////////////
-// Copyright � by W. T. Block, all rights reserved
+﻿/////////////////////////////////////////////////////////////////////////////
+// Copyright © by W. T. Block, all rights reserved
 /////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include "resource.h"
 #include "CHelper.h"
 
+/////////////////////////////////////////////////////////////////////////////
+// CMultilineTextDialog
+//
+// Modal dialog used for editing multi‑line text fields within Photo Explorer.
+// This dialog provides a controlled environment for entering long comments,
+// descriptions, or other metadata fields that exceed the capabilities of
+// single‑line edit controls. It supports configurable maximum length,
+// customizable dialog titles, and flexible parsing of line breaks.
+//
+// Purpose:
+//   • Provide a dedicated multi‑line text editor for EXIF fields such as
+//     comments, descriptions, and user notes.
+//   • Normalize line endings between UI controls and stored metadata.
+//   • Allow callers to specify maximum text length to prevent oversized
+//     metadata fields.
+//   • Support custom dialog titles and positioning.
+//
+// Why this class exists:
+//   Many EXIF fields (e.g., XPComment, ImageDescription, UserComment) can
+//   contain multiple lines of text. Editing these fields inside a property
+//   grid or single‑line control is impractical. CMultilineTextDialog offers
+//   a clean, modal interface that ensures proper formatting, consistent
+//   line‑break handling, and safe text retrieval.
+//
+// Responsibilities:
+//   • Store and manage the multi‑line text value (m_csValue).
+//   • Convert between UI line breaks (“\r\n”) and metadata line breaks (“\n”
+//     or custom tokens).
+//   • Count the number of lines entered (GetNumberOfLines).
+//   • Enforce maximum length limits (MaxLength).
+//   • Allow callers to set dialog title and screen position.
+//   • Provide standard MFC dialog initialization and data exchange.
+//
+// Interaction with other components:
+//   • PropertyGridMultilineText — invokes this dialog when editing multi‑line
+//     metadata fields.
+//   • CImageProperties — stores and retrieves the resulting text for EXIF tags.
+//   • CHelper — assists with parsing and formatting when
 class CMultilineTextDialog : public CDialog
 {
 	DECLARE_DYNAMIC( CMultilineTextDialog )

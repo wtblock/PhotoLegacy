@@ -1,5 +1,5 @@
-/////////////////////////////////////////////////////////////////////////////
-// Copyright � by W. T. Block, all rights reserved
+﻿/////////////////////////////////////////////////////////////////////////////
+// Copyright © by W. T. Block, all rights reserved
 /////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include <memory>
@@ -10,6 +10,81 @@ using namespace std;
 /////////////////////////////////////////////////////////////////////////////
 class CPhotoExplorerDoc;
 
+/////////////////////////////////////////////////////////////////////////////
+// CImageView
+//
+// The primary image-display view for Photo Explorer. This class is responsible
+// for rendering the currently selected image, applying album and metadata
+// labels, handling printing and print preview, and exporting labeled images.
+// It integrates tightly with the document (CPhotoExplorerDoc) and the metadata
+// system to present a fully annotated preview of each photograph.
+//
+// Purpose:
+//   • Display the selected image in the main view window.
+//   • Apply metadata labels (title, location, date, artist, copyright,
+//     keywords, etc.) when enabled.
+//   • Support exporting images with labels applied.
+//   • Provide printing and print-preview functionality.
+//   • Load and adjust images for EXIF rotation.
+//   • Provide album-level fallback values when image metadata is blank.
+//
+// Why this class exists:
+//   Photo Explorer is built around visual inspection of photographs. The view
+//   must show the image exactly as the user expects — rotated correctly,
+//   annotated with metadata, and ready for printing or export. CImageView
+//   centralizes all rendering logic so the UI remains consistent across
+//   preview, print, and export operations.
+//
+// Responsibilities:
+//   • Load images from disk and apply EXIF rotation (LoadAndAdjustImage).
+//   • Render metadata labels directly onto the image (AddTextToImage).
+//   • Export labeled images to user-selected locations (ExportImageWithLabels).
+//   • Provide printing support (OnPreparePrinting, OnPrint, etc.).
+//   • Respect user settings for label visibility (Label property).
+//   • Respect album-level fallback rules:
+//       – AlbumTitle
+//       – AlbumLocation
+//       – AlbumComment
+//       – AlbumDate
+//       – AlbumArtist
+//       – AlbumCopyright
+//       – AlbumSoftware
+//       – AlbumKeywords
+//   • Convert EXIF date strings into human-readable label dates
+//     (GetLabelDate → “Monday January 12, 2025”).
+//   • Create directories when exporting (CreatePath).
+//
+// Interaction with other components:
+//   • CPhotoExplorerDoc — provides the current image and metadata.
+//   • CImageProperties — supplies metadata values and album fallbacks.
+//   • MainFrm — provides access to application-wide settings.
+//   • PropertiesWnd — displays metadata in the side panel.
+//   • GDI+ — used for image loading, rotation, and drawing.
+//   • MFC printing framework — used for print preview and printing.
+//
+// Key Features:
+//   • Label overlay system for titles, locations, dates, and comments.
+//   • Album fallback logic ensures consistent labeling even when images
+//     lack metadata.
+//   • EXIF rotation correction ensures images display upright.
+//   • Export pipeline produces labeled JPEGs for albums, slideshows,
+//     or external sharing.
+//   • Print pipeline integrates with MFC’s printing architecture.
+//   • User preference persistence via WriteProfileInt (“Settings/Label”).
+//
+// Internal Structure:
+//   • m_bLabel — whether labels are shown in the preview.
+//   • m_bExport — whether the current operation is an export with labels.
+//   • GetLabelDate — converts EXIF date strings into friendly text.
+//   • LoadAndAdjustImage — loads and rotates the image.
+//   • AddTextToImage — draws metadata labels onto the image.
+//   • ExportImageWithLabels — writes labeled images to disk.
+//   • PrintImage — renders the image for printing.
+//   • Standard MFC overrides for drawing, printing, and initialization.
+//
+// This class provides the visual foundation of Photo Explorer, ensuring that
+// images are displayed, labeled, printed, and exported with complete fidelity
+// to the metadata and album structure defined by the user.
 /////////////////////////////////////////////////////////////////////////////
 class CImageView : public CView
 {

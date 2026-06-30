@@ -1,10 +1,55 @@
-/////////////////////////////////////////////////////////////////////////////
-// Copyright � by W. T. Block, all rights reserved
+﻿/////////////////////////////////////////////////////////////////////////////
+// Copyright © by W. T. Block, all rights reserved
 /////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include "afxdialogex.h"
 #include "VersionInfo.h"
 
+/////////////////////////////////////////////////////////////////////////////
+// CAboutVersions
+//
+// Dialog class used for both the About Box and the application splash
+// screen. It provides a branded introduction to Photo Explorer, displaying
+// version information, copyright details, company information, and a
+// descriptive summary of the application.
+//
+// Purpose:
+//   • Present a visually rich About dialog using a background image and
+//     stylized text rendered with GDI+.
+//   • Serve as the splash screen shown during application startup.
+//   • Display version metadata extracted from the executable via CVersionInfo.
+//   • Provide a simple, single‑click dismissal mechanism.
+//
+// Why this class exists:
+//   The MFC Application Wizard generates a plain, text‑only About dialog.
+//   Photo Explorer uses a custom About/Splash dialog to present a polished,
+//   professional introduction that includes:
+//       – Product name
+//       – File version
+//       – Legal copyright
+//       – Company name
+//       – File description (split into multiple lines)
+//       – A background logo image scaled to fit the dialog
+//
+// Responsibilities:
+//   • Load and draw the background bitmap (IDB_LOGO) with correct aspect ratio.
+//   • Render version text using GDI+ fonts, shadows, and color styling.
+//   • Retrieve version metadata using CVersionInfo.
+//   • Center the dialog and capture mouse input so a single click dismisses it.
+//   • Act as both modal About dialog and non‑modal splash screen.
+//
+// Rendering:
+//   • DrawImage() scales and centers the background logo.
+//   • DrawLabels() draws product name, version, copyright, company,
+//     and description text using GDI+.
+//   • DrawText() orchestrates text layout, shadow effect, and color styling.
+//
+// Interaction:
+//   • A left mouse click (OnLButtonDown) closes the dialog.
+//   • OnPaint() draws both the background image and the text.
+//
+// This dialog provides the first visual impression of Photo Explorer and
+// reinforces the application's identity and professionalism.
 /////////////////////////////////////////////////////////////////////////////
 class CAboutVersions : public CDialogEx
 {
