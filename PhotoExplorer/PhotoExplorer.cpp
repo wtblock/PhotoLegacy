@@ -93,8 +93,15 @@ BOOL CPhotoExplorerApp::InitInstance()
 	// Change the registry key under which our settings are stored
 	// TODO: You should modify this string to be something appropriate
 	// such as the name of your company or organization
-	SetRegistryKey(_T("PhotoExplorer"));
+	SetRegistryKey(_T("WTBLOCK.ORG"));
 	LoadStdProfileSettings(16);  // Load standard INI file options (including MRU)
+
+	CString csWorkingFolder(char(0), MAX_PATH);
+	DWORD dwLen = ::GetCurrentDirectory(MAX_PATH, csWorkingFolder.GetBuffer());
+	csWorkingFolder.ReleaseBuffer();
+
+	// Overwrite the application's starting folder
+	WriteProfileString(L"Settings", L"Folder", csWorkingFolder);
 
 	GdiplusStartup( &m_gdiplusToken, &m_gdiplusStartupInput, NULL );
 
