@@ -2789,3 +2789,28 @@ CString CPhotoExplorerDoc::GenerateMapLink
 } // GenerateMapLink
 
 /////////////////////////////////////////////////////////////////////////////
+void CPhotoExplorerDoc::OnCloseDocument()
+{
+	// TODO: Add your specialized code here and/or call the base class
+
+	CDocument::OnCloseDocument();
+}
+
+/////////////////////////////////////////////////////////////////////////////
+BOOL CPhotoExplorerDoc::OnSaveDocument(LPCTSTR lpszPathName)
+{
+	// TODO: Add your specialized code here and/or call the base class
+
+	return CDocument::OnSaveDocument(lpszPathName);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+BOOL CPhotoExplorerDoc::SaveModified()
+{
+	// TODO: Add your specialized code here and/or call the base class
+
+	return CDocument::SaveModified();
+}
+
+/////////////////////////////////////////////////////////////////////////////
+

@@ -1013,6 +1013,18 @@ public:
 	afx_msg void OnUpdateEditAlbumLabel( CCmdUI* pCmdUI );
 	void OnEditRename();
 	afx_msg void OnUpdateEditRename( CCmdUI* pCmdUI );
+    virtual void OnCloseDocument();
+    virtual BOOL OnSaveDocument(LPCTSTR lpszPathName);
+    virtual BOOL SaveModified();
+	virtual BOOL IsModified() 
+	{ 
+		return FALSE;
+	};
+	virtual void SetModifiedFlag(BOOL bModified = TRUE)
+	{
+		CDocument::SetModifiedFlag(FALSE);
+	}
+
 };
 
 /////////////////////////////////////////////////////////////////////////////
